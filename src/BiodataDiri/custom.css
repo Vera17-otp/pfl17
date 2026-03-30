@@ -1,0 +1,159 @@
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family: 'Poppins', sans-serif;
+}
+
+body{
+background: linear-gradient(135deg,#e3f0ff,#326ce2);
+padding:40px;
+}
+
+/* Container */
+
+.container{
+max-width:1100px;
+margin:auto;
+background:rgb(243, 146, 225);
+border-radius:20px;
+overflow:hidden;
+box-shadow:0 20px 40px rgba(0,0,0,0.08);
+}
+
+/* Header */
+
+.title{
+background: linear-gradient(120deg,#5b9cff,#7db8ff);
+color:white;
+text-align:center;
+padding:30px;
+font-size:28px;
+font-weight:600;
+letter-spacing:1px;
+}
+
+/* Layout */
+
+.grid{
+display:grid;
+grid-template-columns:320px 1fr;
+}
+
+/* Sidebar */
+
+.sidebar{
+background:#f7faff;
+padding:30px;
+border-right:1px solid #e6f0ff;
+}
+
+/* Profile */
+
+.profile{
+width:140px;
+height:140px;
+border-radius:50%;
+display:block;
+margin:auto;
+border:6px solid #e3efff;
+}
+
+.name{
+text-align:center;
+margin-top:15px;
+color:#333;
+font-size:22px;
+font-weight:600;
+}
+
+.job{
+text-align:center;
+color:#6c8ecf;
+margin-top:5px;
+}
+
+/* Card */
+
+.card{
+margin-top:25px;
+background:white;
+padding:18px;
+border-radius:12px;
+box-shadow:0 5px 15px rgba(0,0,0,0.05);
+transition:0.3s;
+}
+
+.card:hover{
+transform:translateY(-3px);
+}
+
+.card h3{
+color:#5b9cff;
+margin-bottom:10px;
+font-size:18px;
+}
+
+.card p{
+color:#555;
+margin:6px 0;
+font-size:14px;
+}
+
+/* Content */
+
+.content{
+padding:30px;
+background:white;
+}
+
+/* Skill */
+
+.skill{
+background:linear-gradient(120deg,#5b9cff,#7db8ff);
+color:white;
+padding:8px 14px;
+border-radius:30px;
+display:inline-block;
+margin:6px;
+font-size:13px;
+font-weight:500;
+}
+
+/* Button */
+
+button{
+background: #5b9cff;
+color:rgb(240, 165, 217);
+border:none;
+padding:8px 16px;
+border-radius:30px;
+margin:5px;
+cursor:pointer;
+transition:0.3s;
+}
+
+button:hover{
+background:#eba7d0;
+}
+
+/* Section spacing */
+
+.section{
+margin-bottom:25px;
+}
+
+/* Responsive */
+
+@media(max-width:900px){
+
+.grid{
+grid-template-columns:1fr;
+}
+
+.sidebar{
+border-right:none;
+border-bottom:1px solid #eee;
+}
+
+}
