@@ -1,0 +1,242 @@
+[
+  {
+    "id": 1,
+    "name": "Skyline Executive",
+    "description": "Sedan premium untuk eksekutif bisnis dengan layanan bantuan bagasi penuh.",
+    "image": "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?q=80&w=500&auto=format&fit=crop",
+    "tags": ["Executive", "Priority", "Fast Track"],
+    "details": {
+      "vehicle": { "model": "Mercedes-Benz S-Class", "capacity": "3 Orang", "wifi": "Tersedia" },
+      "pricing": { "rate": 850000, "type": "Flat Rate", "tax_included": true },
+      "service": { "driver_lang": "English/ID", "bottled_water": true, "magazines": true }
+    }
+  },
+  {
+    "id": 2,
+    "name": "Cloud9 Family Van",
+    "description": "Van luas dengan kursi ergonomis, ideal untuk liburan keluarga dengan banyak koper.",
+    "image": "https://images.unsplash.com/photo-1600100397608-f09074aa80e3?q=80&w=500&auto=format&fit=crop",
+    "tags": ["Family", "Spacious", "Holiday"],
+    "details": {
+      "vehicle": { "model": "Toyota Alphard VIP", "capacity": "6 Orang", "wifi": "Tersedia" },
+      "pricing": { "rate": 1250000, "type": "Per Trip", "tax_included": true },
+      "service": { "driver_lang": "Indonesia", "bottled_water": true, "magazines": false }
+    }
+  },
+  {
+    "id": 3,
+    "name": "AeroShuttle Group",
+    "description": "Bus mini modern untuk rombongan delegasi atau tur grup besar.",
+    "image": "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?q=80&w=500&auto=format&fit=crop",
+    "tags": ["Group", "Delegation", "Big Capacity"],
+    "details": {
+      "vehicle": { "model": "Mercedes Sprinter", "capacity": "15 Orang", "wifi": "Tersedia" },
+      "pricing": { "rate": 2500000, "type": "Daily", "tax_included": false },
+      "service": { "driver_lang": "English/ID", "bottled_water": true, "magazines": true }
+    }
+  },
+  {
+    "id": 4,
+    "name": "Eco-Fly Electric",
+    "description": "Opsi ramah lingkungan dengan mobil listrik senyap untuk kenyamanan maksimal.",
+    "image": "https://images.unsplash.com/photo-1560958089-b8a1929cea89?q=80&w=500&auto=format&fit=crop",
+    "tags": ["Eco", "Modern", "Silent"],
+    "details": {
+      "vehicle": { "model": "Tesla Model X", "capacity": "4 Orang", "wifi": "Tersedia" },
+      "pricing": { "rate": 600000, "type": "Flat Rate", "tax_included": true },
+      "service": { "driver_lang": "Indonesia", "bottled_water": true, "magazines": false }
+    }
+  },
+  {
+    "id": 5,
+    "name": "BlueJet Economy",
+    "description": "Layanan jemputan standar yang andal dan terjangkau untuk budget traveler.",
+    "image": "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?q=80&w=500&auto=format&fit=crop",
+    "tags": ["Budget", "Economy", "Reliable"],
+    "details": {
+      "vehicle": { "model": "Toyota Camry", "capacity": "4 Orang", "wifi": "Tidak Ada" },
+      "pricing": { "rate": 350000, "type": "Flat Rate", "tax_included": true },
+      "service": { "driver_lang": "Indonesia", "bottled_water": false, "magazines": false }
+    }
+  },
+  {
+    "id": 6,
+    "name": "VIP Chauffeur",
+    "description": "Supir pribadi berseragam dengan kendaraan mewah untuk tamu kenegaraan.",
+    "image": "https://images.unsplash.com/photo-1503376780353-7e6692767b70?q=80&w=500&auto=format&fit=crop",
+    "tags": ["VIP", "Security", "Elite"],
+    "details": {
+      "vehicle": { "model": "Audi A8 L", "capacity": "2 Orang", "wifi": "Tersedia" },
+      "pricing": { "rate": 1500000, "type": "Flat Rate", "tax_included": true },
+      "service": { "driver_lang": "Multilingual", "bottled_water": true, "magazines": true }
+    }
+  },
+  {
+    "id": 7,
+    "name": "Prime SUV",
+    "description": "SUV tangguh untuk medan perjalanan yang lebih bervariasi dari bandara.",
+    "image": "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?q=80&w=500&auto=format&fit=crop",
+    "tags": ["SUV", "All-Terrain", "Robust"],
+    "details": {
+      "vehicle": { "model": "Land Rover Defender", "capacity": "5 Orang", "wifi": "Tersedia" },
+      "pricing": { "rate": 1100000, "type": "Flat Rate", "tax_included": true },
+      "service": { "driver_lang": "Indonesia", "bottled_water": true, "magazines": false }
+    }
+  },
+  {
+    "id": 8,
+    "name": "Night Owl Transfer",
+    "description": "Layanan khusus tengah malam dengan sistem pemantauan jadwal penerbangan real-time.",
+    "image": "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?q=80&w=500&auto=format&fit=crop",
+    "tags": ["24/7", "Late Night", "Safe"],
+    "details": {
+      "vehicle": { "model": "Honda Accord", "capacity": "4 Orang", "wifi": "Tersedia" },
+      "pricing": { "rate": 450000, "type": "Flat Rate", "tax_included": true },
+      "service": { "driver_lang": "Indonesia", "bottled_water": true, "magazines": false }
+    }
+  },
+  {
+    "id": 9,
+    "name": "Grand Tourer",
+    "description": "Mobil sport dengan kapasitas bagasi yang cukup untuk gaya perjalanan cepat.",
+    "image": "https://images.unsplash.com/photo-1583121274602-3e2820c69888?q=80&w=500&auto=format&fit=crop",
+    "tags": ["Sporty", "Fast", "Stylish"],
+    "details": {
+      "vehicle": { "model": "Porsche Panamera", "capacity": "2 Orang", "wifi": "Tersedia" },
+      "pricing": { "rate": 2000000, "type": "Per Hour", "tax_included": true },
+      "service": { "driver_lang": "English", "bottled_water": true, "magazines": true }
+    }
+  },
+  {
+    "id": 10,
+    "name": "Corporate Bus",
+    "description": "Bus besar untuk antar jemput karyawan atau tamu hotel dalam jumlah masif.",
+    "image": "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=500&auto=format&fit=crop",
+    "tags": ["Massive", "Corporate", "Efficient"],
+    "details": {
+      "vehicle": { "model": "Scania Touring", "capacity": "45 Orang", "wifi": "Tersedia" },
+      "pricing": { "rate": 5000000, "type": "Daily", "tax_included": false },
+      "service": { "driver_lang": "Indonesia", "bottled_water": true, "magazines": false }
+    }
+  },
+  {
+    "id": 11,
+    "name": "Island Voyager",
+    "description": "Kendaraan atap terbuka untuk perjalanan bandara di area pesisir.",
+    "image": "https://images.unsplash.com/photo-1511919884226-fd3cad34687c?q=80&w=500&auto=format&fit=crop",
+    "tags": ["Coastal", "Open Top", "Vacation"],
+    "details": {
+      "vehicle": { "model": "Jeep Wrangler", "capacity": "4 Orang", "wifi": "Tidak Ada" },
+      "pricing": { "rate": 900000, "type": "Flat Rate", "tax_included": true },
+      "service": { "driver_lang": "English/ID", "bottled_water": true, "magazines": false }
+    }
+  },
+  {
+    "id": 12,
+    "name": "Business Class Mini",
+    "description": "MPV kompak dengan kenyamanan setara kelas bisnis pesawat.",
+    "image": "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?q=80&w=500&auto=format&fit=crop",
+    "tags": ["Business", "Compact", "Premium"],
+    "details": {
+      "vehicle": { "model": "Honda Odyssey", "capacity": "4 Orang", "wifi": "Tersedia" },
+      "pricing": { "rate": 700000, "type": "Flat Rate", "tax_included": true },
+      "service": { "driver_lang": "Indonesia", "bottled_water": true, "magazines": true }
+    }
+  },
+  {
+    "id": 13,
+    "name": "Urban Electric",
+    "description": "Mobil listrik mungil untuk navigasi cepat di kemacetan kota menuju bandara.",
+    "image": "https://images.unsplash.com/photo-1593941707882-a5bba14938c7?q=80&w=500&auto=format&fit=crop",
+    "tags": ["Eco", "City", "Agile"],
+    "details": {
+      "vehicle": { "model": "Wuling Air EV", "capacity": "2 Orang", "wifi": "Tersedia" },
+      "pricing": { "rate": 200000, "type": "Flat Rate", "tax_included": true },
+      "service": { "driver_lang": "Indonesia", "bottled_water": false, "magazines": false }
+    }
+  },
+  {
+    "id": 14,
+    "name": "Majestic Limousine",
+    "description": "Limousine panjang untuk acara spesial atau penjemputan sangat penting.",
+    "image": "https://images.unsplash.com/photo-1469033092222-65b32a759085?q=80&w=500&auto=format&fit=crop",
+    "tags": ["Limo", "Celebration", "Ultra-Luxury"],
+    "details": {
+      "vehicle": { "model": "Lincoln Town Car", "capacity": "8 Orang", "wifi": "Tersedia" },
+      "pricing": { "rate": 4000000, "type": "Per Event", "tax_included": true },
+      "service": { "driver_lang": "Multilingual", "bottled_water": true, "magazines": true }
+    }
+  },
+  {
+    "id": 15,
+    "name": "Alpine Explorer",
+    "description": "Kendaraan dengan sistem pemanas dan ban khusus untuk area pegunungan.",
+    "image": "https://images.unsplash.com/photo-1542281286-9e0a16bb7366?q=80&w=500&auto=format&fit=crop",
+    "tags": ["Mountain", "Winter Ready", "Adventure"],
+    "details": {
+      "vehicle": { "model": "Volvo XC90", "capacity": "5 Orang", "wifi": "Tersedia" },
+      "pricing": { "rate": 1300000, "type": "Flat Rate", "tax_included": true },
+      "service": { "driver_lang": "English/ID", "bottled_water": true, "magazines": false }
+    }
+  },
+  {
+    "id": 16,
+    "name": "Classic Elegance",
+    "description": "Mobil klasik yang direstorasi untuk pengalaman transfer bandara yang unik.",
+    "image": "https://images.unsplash.com/photo-1502877338535-766e1452684a?q=80&w=500&auto=format&fit=crop",
+    "tags": ["Classic", "Unique", "Vintage"],
+    "details": {
+      "vehicle": { "model": "Mercedes W124", "capacity": "3 Orang", "wifi": "Tidak Ada" },
+      "pricing": { "rate": 550000, "type": "Flat Rate", "tax_included": true },
+      "service": { "driver_lang": "Indonesia", "bottled_water": true, "magazines": true }
+    }
+  },
+  {
+    "id": 17,
+    "name": "Reliable Wagon",
+    "description": "Mobil station wagon dengan ruang bagasi sangat panjang untuk peralatan olahraga.",
+    "image": "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?q=80&w=500&auto=format&fit=crop",
+    "tags": ["Sport", "Wagon", "Extra Space"],
+    "details": {
+      "vehicle": { "model": "Subaru Outback", "capacity": "4 Orang", "wifi": "Tersedia" },
+      "pricing": { "rate": 650000, "type": "Flat Rate", "tax_included": true },
+      "service": { "driver_lang": "Indonesia", "bottled_water": true, "magazines": false }
+    }
+  },
+  {
+    "id": 18,
+    "name": "Solar Hybrid",
+    "description": "Mobil hybrid dengan efisiensi bahan bakar maksimal untuk jarak jauh.",
+    "image": "https://images.unsplash.com/photo-1590362891991-f776e747a588?q=80&w=500&auto=format&fit=crop",
+    "tags": ["Hybrid", "Long Distance", "Smart"],
+    "details": {
+      "vehicle": { "model": "Toyota Prius", "capacity": "4 Orang", "wifi": "Tersedia" },
+      "pricing": { "rate": 400000, "type": "Flat Rate", "tax_included": true },
+      "service": { "driver_lang": "Indonesia", "bottled_water": false, "magazines": false }
+    }
+  },
+  {
+    "id": 19,
+    "name": "Stealth Armor",
+    "description": "Kendaraan lapis baja dengan perlindungan tingkat tinggi untuk profil berisiko.",
+    "image": "https://images.unsplash.com/photo-1555215695-3004980ad54e?q=80&w=500&auto=format&fit=crop",
+    "tags": ["Security", "Armored", "Confidential"],
+    "details": {
+      "vehicle": { "model": "Range Rover Sentinel", "capacity": "4 Orang", "wifi": "Tersedia" },
+      "pricing": { "rate": 10000000, "type": "Per Trip", "tax_included": true },
+      "service": { "driver_lang": "Multilingual", "bottled_water": true, "magazines": true }
+    }
+  },
+  {
+    "id": 20,
+    "name": "SkyBus Express",
+    "description": "Bus antar jemput bandara dengan jadwal keberangkatan setiap 15 menit.",
+    "image": "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=500&auto=format&fit=crop",
+    "tags": ["Public", "Frequent", "Cheap"],
+    "details": {
+      "vehicle": { "model": "Hino Bus", "capacity": "30 Orang", "wifi": "Tidak Ada" },
+      "pricing": { "rate": 100000, "type": "Per Person", "tax_included": true },
+      "service": { "driver_lang": "Indonesia", "bottled_water": false, "magazines": false }
+    }
+  }
+]
