@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+@font-face {
+    font-family: 'Poppins';
+    src: url('/fonts/Poppins-Regular.ttf') format('truetype'); 
+}
+
+@font-face {
+    font-family: 'Barlow';
+    src: url('/fonts/Barlow-Regular.ttf') format('truetype');
+}
+
+:root {
+    --color-latar: #F8FAFC; 
+    --color-permukaan: #FFFFFF; 
+    --color-teks: #1E293B; 
+    --color-amber: #F59E0B; 
+    --color-garis: #F1F5F9; 
+
+    /* Typography */
+    --font-primary: 'Poppins', sans-serif;
+    --font-heading: 'Barlow', sans-serif;
+}
+
+@layer base {
+    body {
+        font-family: var(--font-primary);
+        @apply bg-[var(--color-latar)] text-[var(--color-teks)];
+    }
+    
+    h1, h2, h3, .font-heading {
+        font-family: var(--font-heading);
+        @apply font-bold tracking-tight; 
+    }
+}
