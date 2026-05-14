@@ -7,7 +7,7 @@
   --accent: #aa3bff;
   --accent-bg: rgba(170, 59, 255, 0.1);
   --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
+  --social-bg: rgba(90, 80, 21, 0.5);
   --shadow:
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
@@ -52,20 +52,44 @@
 
 body {
   margin: 0;
+  padding: 0;
+  overflow-x: hidden;
 }
 
+/* ==========================================================================
+   PERBAIKAN UTAMA: #root dibuat memenuhi layar & layout mendatar (Row)
+   ========================================================================== */
 #root {
-  width: 1126px;
+  width: 100vw;
   max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
+  margin: 0;
+  text-align: left; /* Mengubah default dari center ke left agar cocok untuk dashboard */
+  min-height: 100vh;
   display: flex;
-  flex-direction: column;
+  flex-direction: row; /* Membuat Sidebar dan Konten Utama berjejer ke samping */
   box-sizing: border-box;
 }
 
+/* Tambah class pendukung jika belum ada di file CSS lain */
+.sidebar {
+  width: 260px; /* Menentukan lebar tetap sidebar */
+  flex-shrink: 0; /* Mencegah sidebar mengecil */
+  background: var(--bg);
+  border-right: 1px solid var(--border);
+}
+
+.main-content {
+  flex-grow: 1; /* Memaksa area dashboard mengambil semua sisa space ke kanan */
+  padding: 24px;
+  background-color: #f8fafc; /* Warna background abu-abu terang dashboard */
+  overflow-y: auto;
+  height: 100vh;
+  box-sizing: border-box;
+}
+
+/* ==========================================================================
+   Sisa kode elemen bawaan (dipertahankan)
+   ========================================================================== */
 h1,
 h2 {
   font-family: var(--heading);
@@ -82,6 +106,7 @@ h1 {
     margin: 20px 0;
   }
 }
+
 h2 {
   font-size: 24px;
   line-height: 118%;
@@ -91,6 +116,7 @@ h2 {
     font-size: 20px;
   }
 }
+
 p {
   margin: 0;
 }
