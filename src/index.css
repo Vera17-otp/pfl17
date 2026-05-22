@@ -1,18 +1,20 @@
+/* ==========================================================================
+   VARIABLES & THEME SETUP
+   ========================================================================== */
 :root {
   --text: #6b6375;
   --text-h: #08060d;
   --bg: #fff;
+  --main-bg: #f8fafc; /* Warna background area konten */
   --border: #e5e4e7;
   --code-bg: #f4f3ec;
   --accent: #aa3bff;
   --accent-bg: rgba(170, 59, 255, 0.1);
   --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(90, 80, 21, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  --social-bg: rgba(90, 80, 21, 0.1);
+  --shadow: rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
 
   font: 18px/145% var(--sans);
@@ -20,14 +22,8 @@
   color-scheme: light dark;
   color: var(--text);
   background: var(--bg);
-  font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -35,103 +31,102 @@
     --text: #9ca3af;
     --text-h: #f3f4f6;
     --bg: #16171d;
+    --main-bg: #0f1014; 
     --border: #2e303a;
     --code-bg: #1f2028;
     --accent: #c084fc;
     --accent-bg: rgba(192, 132, 252, 0.15);
     --accent-border: rgba(192, 132, 252, 0.5);
     --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
+    --shadow: rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
   }
 }
 
+/* ==========================================================================
+   RESET & LAYOUT DASAR (Solusi Layar Putih)
+   ========================================================================== */
 body {
   margin: 0;
   padding: 0;
-  overflow-x: hidden;
+  overflow: hidden; /* Mencegah double scrollbar di body */
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: row; /* Sidebar kiri, Konten kanan */
+  overflow: hidden;
+}
+
+/* Memperbaiki div anak yang sering bawa class 'items-center' dari Tailwind */
+#root > div {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  height: 100%;
+  align-items: stretch !important;   /* Memaksa agar tidak 'center' secara vertikal */
+  justify-content: flex-start !important; /* Memaksa agar tidak 'center' secara horizontal */
 }
 
 /* ==========================================================================
-   PERBAIKAN UTAMA: #root dibuat memenuhi layar & layout mendatar (Row)
+   SIDEBAR & MAIN CONTENT
    ========================================================================== */
-#root {
-  width: 100vw;
-  max-width: 100%;
-  margin: 0;
-  text-align: left; /* Mengubah default dari center ke left agar cocok untuk dashboard */
-  min-height: 100vh;
-  display: flex;
-  flex-direction: row; /* Membuat Sidebar dan Konten Utama berjejer ke samping */
-  box-sizing: border-box;
-}
-
-/* Tambah class pendukung jika belum ada di file CSS lain */
 .sidebar {
-  width: 260px; /* Menentukan lebar tetap sidebar */
-  flex-shrink: 0; /* Mencegah sidebar mengecil */
+  width: 260px;
+  flex-shrink: 0;
   background: var(--bg);
   border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  box-sizing: border-box;
 }
 
 .main-content {
-  flex-grow: 1; /* Memaksa area dashboard mengambil semua sisa space ke kanan */
-  padding: 24px;
-  background-color: #f8fafc; /* Warna background abu-abu terang dashboard */
-  overflow-y: auto;
-  height: 100vh;
+  flex-grow: 1;
+  background-color: var(--main-bg);
+  overflow-y: auto; /* Scroll hanya di area konten */
+  padding: 40px;
   box-sizing: border-box;
 }
 
 /* ==========================================================================
-   Sisa kode elemen bawaan (dipertahankan)
+   TYPOGRAPHY & ELEMENTS
    ========================================================================== */
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
+h1, h2 {
+  font-weight: 600;
   color: var(--text-h);
+  margin-top: 0;
 }
 
 h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-
-p {
-  margin: 0;
-}
-
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+  font-size: 2.5rem;
+  letter-spacing: -1px;
 }
 
 code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
+  font-family: var(--mono);
+  font-size: 0.9em;
+  padding: 0.2em 0.4em;
   background: var(--code-bg);
+  border-radius: 4px;
+}
+
+/* Responsive untuk Tablet & HP */
+@media (max-width: 1024px) {
+  #root, #root > div {
+    flex-direction: column; /* Tumpuk vertikal di layar kecil */
+  }
+
+  .sidebar {
+    width: 100%;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .main-content {
+    padding: 20px;
+  }
 }

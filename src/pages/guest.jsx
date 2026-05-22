@@ -19,11 +19,11 @@ export default function Guests() {
     };
 
     return (
-        <div className="bg-[#F0F4F8] min-h-screen p-3">
+        <div className="bg-[#EBF6FA] min-h-screen p-3"> {/* Background sky blue sangat muda */}
             {/* Header */}
             <div className="mb-3">
-                <h1 className="text-base font-bold text-slate-700">Guest Directory</h1>
-                <p className="text-[9px] text-slate-400">Management / Guests</p>
+                <h1 className="text-base font-bold text-[#2C7A8C]">Guest Directory</h1> {/* Sky blue tua */}
+                <p className="text-[9px] text-[#76D1E3]">Management / Guests</p> {/* Sky blue utama */}
             </div>
 
             {/* Search + Actions */}
@@ -34,17 +34,21 @@ export default function Guests() {
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder="Search guests..."
-                        className="w-full bg-white border border-slate-200 rounded-md py-1 pl-7 text-[10px] focus:outline-none focus:border-blue-400"
+                        className="w-full bg-white border border-[#C5EAF2] rounded-md py-1 pl-7 text-[10px] focus:outline-none focus:border-[#76D1E3] focus:ring-1 focus:ring-[#D4F1F8]"
                     />
-                    <HiSearch className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-[10px]" />
+                    <HiSearch className="absolute left-2 top-1/2 -translate-y-1/2 text-[#76D1E3] text-[10px]" />
                 </div>
                 <div className="flex gap-1.5">
-                    <div className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-[8px] font-bold flex items-center gap-1">
+                    <div className="bg-[#D4F1F8] text-[#2C7A8C] px-2 py-0.5 rounded text-[8px] font-bold flex items-center gap-1">
                         <FaPaw size={8} /> +12%
                     </div>
-                    <button className="bg-white border border-slate-200 px-2 py-0.5 rounded text-[8px] font-bold">FILTER</button>
-                    <button className="bg-white border border-slate-200 px-2 py-0.5 rounded text-[8px] font-bold">EXPORT</button>
-                    <button className="bg-blue-500 text-white px-2 py-0.5 rounded text-[8px] font-bold flex items-center gap-1">
+                    <button className="bg-white border border-[#C5EAF2] px-2 py-0.5 rounded text-[8px] font-bold text-[#5EC4D9] hover:bg-[#EBF6FA] transition-all">
+                        FILTER
+                    </button>
+                    <button className="bg-white border border-[#C5EAF2] px-2 py-0.5 rounded text-[8px] font-bold text-[#5EC4D9] hover:bg-[#EBF6FA] transition-all">
+                        EXPORT
+                    </button>
+                    <button className="bg-[#76D1E3] text-white px-2 py-0.5 rounded text-[8px] font-bold flex items-center gap-1 hover:bg-[#5EC4D9] transition-all shadow-sm">
                         <FaUserPlus size={8} /> ADD
                     </button>
                 </div>
@@ -53,34 +57,34 @@ export default function Guests() {
             {/* Guest Cards - Compact Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                 {filteredGuests.map((g, idx) => (
-                    <div key={g?.guestId} className="bg-white rounded-md border border-slate-100 p-2 shadow-sm">
+                    <div key={g?.guestId} className="bg-white rounded-md border border-[#C5EAF2] p-2 shadow-sm hover:shadow-md transition-all">
                         <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-md bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs">
+                            <div className="w-7 h-7 rounded-md bg-[#D4F1F8] flex items-center justify-center text-[#2C7A8C] font-bold text-xs">
                                 {g?.guestName?.charAt(0) || "?"}
                             </div>
                             <div>
                                 <div className="font-bold text-slate-700 text-xs">{g?.guestName || "Unknown"}</div>
-                                <div className="text-[7px] text-slate-400">ID: {g?.guestId || "-"}</div>
+                                <div className="text-[7px] text-[#76D1E3]">ID: {g?.guestId || "-"}</div>
                             </div>
                         </div>
-                        <div className="mt-1.5 pt-1.5 border-t border-slate-50 flex justify-between items-center">
+                        <div className="mt-1.5 pt-1.5 border-t border-[#D4F1F8] flex justify-between items-center">
                             <div>
                                 <span className={`text-[6px] font-bold px-1 py-0.5 rounded ${
-                                    g?.membership === 'Platinum' ? 'bg-slate-700 text-white' :
-                                    g?.membership === 'Gold' ? 'bg-amber-100 text-amber-700' :
-                                    g?.membership === 'Silver' ? 'bg-gray-200 text-gray-600' : 'bg-slate-100 text-slate-500'
+                                    g?.membership === 'Platinum' ? 'bg-[#2C7A8C] text-white' :
+                                    g?.membership === 'Gold' ? 'bg-[#FEF3C7] text-[#92400E]' :
+                                    g?.membership === 'Silver' ? 'bg-[#C5EAF2] text-[#2C7A8C]' : 'bg-[#D4F1F8] text-[#5EC4D9]'
                                 }`}>
                                     {g?.membership || "Basic"}
                                 </span>
-                                <span className="text-[7px] text-slate-400 ml-1.5">{getRandomStay(idx)} nights</span>
+                                <span className="text-[7px] text-[#76D1E3] ml-1.5">{getRandomStay(idx)} nights</span>
                             </div>
                             <div className="flex gap-1">
-                                <span className="text-[6px] text-slate-300">{g?.origin?.slice(0,3) || "IDN"}</span>
-                                <button className="text-blue-500 text-[7px] font-bold">Send →</button>
+                                <span className="text-[6px] text-[#76D1E3]">{g?.origin?.slice(0,3) || "IDN"}</span>
+                                <button className="text-[#76D1E3] text-[7px] font-bold hover:text-[#2C7A8C] transition-all">Send →</button>
                             </div>
                         </div>
                         {/* Email dan Phone - tambahan info */}
-                        <div className="mt-1 text-[6px] text-slate-400 truncate">
+                        <div className="mt-1 text-[6px] text-[#76D1E3] truncate">
                             {g?.email} | {g?.phone}
                         </div>
                     </div>
@@ -90,7 +94,7 @@ export default function Guests() {
             {/* Jika tidak ada data */}
             {filteredGuests.length === 0 && (
                 <div className="text-center py-8">
-                    <p className="text-[10px] text-slate-400">No guests found</p>
+                    <p className="text-[10px] text-[#76D1E3]">No guests found</p>
                 </div>
             )}
         </div>

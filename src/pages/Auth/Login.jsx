@@ -3,7 +3,7 @@ import { useState } from "react";
 import { BsFillExclamationDiamondFill } from "react-icons/bs";
 import { ImSpinner2 } from "react-icons/im";
 import { useNavigate } from "react-router-dom";
-import { FaUser, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 export default function Login() {
     const navigate = useNavigate();
@@ -11,141 +11,102 @@ export default function Login() {
     const [error, setError] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [dataForm, setDataForm] = useState({
-        username: "",  // <-- PAKAI username, BUKAN email
+        username: "",
         password: "",
     });
 
     const handleChange = (evt) => {
         const { name, value } = evt.target;
-        setDataForm({
-            ...dataForm,
-            [name]: value,
-        });
+        setDataForm({ ...dataForm, [name]: value });
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         setError("");
-
-        axios
-            .post("https://dummyjson.com/user/login", {
-                username: dataForm.username,  // <-- username, BUKAN email
-                password: dataForm.password,
-            })
-            .then((response) => {
-                if (response.status !== 200) {
-                    setError(response.data.message);
-                    return;
-                }
-                navigate("/");
-            })
-            .catch((err) => {
-                const msg = err.response?.data?.message || err.message || "Authentication failed";
-                setError(msg);
-            })
-            .finally(() => {
-                setLoading(false);
-            });
+        axios.post("https://dummyjson.com/user/login", {
+            username: dataForm.username,
+            password: dataForm.password,
+        })
+        .then(() => navigate("/"))
+        .catch((err) => setError(err.response?.data?.message || "Authentication failed"))
+        .finally(() => setLoading(false));
     };
 
     return (
         <>
-            {/* Error Notification */}
             {error && (
-                <div className="bg-rose-50 border border-rose-100 mb-4 p-3 rounded-xl flex items-center gap-2">
-                    <div className="w-6 h-6 bg-rose-500 text-white rounded-lg flex items-center justify-center shrink-0">
-                        <BsFillExclamationDiamondFill size={10} />
-                    </div>
-                    <p className="text-[9px] font-bold text-rose-600">{error}</p>
+                <div className="bg-rose-50 border border-rose-100 mb-4 p-3 rounded-lg flex items-center gap-2">
+                    <BsFillExclamationDiamondFill className="text-rose-500" />
+                    <p className="text-xs font-medium text-rose-600">{error}</p>
                 </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-3">
-                {/* Username Field */}
-                <div>
-                    <label className="block text-[9px] font-semibold text-slate-600 mb-1">
-                        Username
-                    </label>
+            <form onSubmit={handleSubmit} className="space-y-5">
+                {/* Email/Username Field */}
+                <div className="space-y-1">
                     <div className="relative">
-                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                            <FaUser size={12} />
-                        </div>
                         <input
                             name="username"
                             onChange={handleChange}
                             type="text"
                             required
-                            placeholder="emilys"
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 pl-9 pr-3 text-xs focus:border-blue-400 focus:ring-1 focus:ring-blue-100 outline-none transition-all"
+                            placeholder="Email Address"
+                            className="w-full bg-white border border-slate-300 rounded-xl py-3 px-4 text-sm text-[#6395f9] placeholder-slate-300 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
                         />
                     </div>
                 </div>
 
                 {/* Password Field */}
-                <div>
-                    <label className="block text-[9px] font-semibold text-slate-600 mb-1">
-                        Password
-                    </label>
+                <div className="space-y-1">
                     <div className="relative">
-                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                            <FaLock size={12} />
-                        </div>
                         <input
                             name="password"
                             onChange={handleChange}
                             type={showPassword ? "text" : "password"}
                             required
-                            placeholder="emilyspass"
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 pl-9 pr-9 text-xs focus:border-blue-400 focus:ring-1 focus:ring-blue-100 outline-none transition-all"
+                            placeholder="Password"
+                            className="w-full bg-white border border-slate-300 rounded-xl py-3 px-4 text-sm text-slate-400 placeholder-slate-300 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
                         />
                         <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-[#6395f9]"
                         >
-                            {showPassword ? <FaEyeSlash size={11} /> : <FaEye size={11} />}
-                        </button>
-                    </div>
-                    <div className="text-right mt-1">
-                        <button 
-                            type="button" 
-                            onClick={() => navigate("/forgot")}
-                            className="text-[8px] text-blue-500 hover:text-blue-600 font-medium"
-                        >
-                            Forgot Password?
+                            {showPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
                         </button>
                     </div>
                 </div>
 
-                {/* Login Button */}
+                {/* Checkbox & Forgot Password */}
+                <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-[#6395f9] focus:ring-[#6395f9]" />
+                        <span className="text-xs text-slate-400">Keep me logged in</span>
+                    </label>
+                    <button type="button" className="text-xs text-[#6395f9] font-medium hover:underline">
+                        Forgot password ?
+                    </button>
+                </div>
+
+                {/* Login Button - Warna Biru Soft sesuai gambar */}
                 <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-semibold py-2 rounded-lg transition-all shadow-md shadow-blue-200 mt-2 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                    className="w-full bg-[#6c9cf9] hover:bg-[#5a8be5] text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-2 disabled:opacity-70"
                 >
-                    {loading ? (
-                        <>
-                            <ImSpinner2 className="animate-spin text-xs" />
-                            Authenticating...
-                        </>
-                    ) : (
-                        "Sign in"
-                    )}
+                    {loading ? <ImSpinner2 className="animate-spin" /> : "Log in"}
                 </button>
             </form>
 
-            {/* Register Link */}
-            <p className="text-center text-[8px] text-slate-400 mt-3">
-                Don't have an account yet?{' '}
-                <button 
-                    type="button" 
-                    onClick={() => navigate("/register")}
-                    className="text-blue-500 font-semibold hover:underline"
-                >
-                    Register for free
-                </button>
-            </p>
+            <div className="mt-6">
+                <p className="text-sm text-slate-400">
+                    Dont have an account ?{' '}
+                    <button onClick={() => navigate("/register")} className="text-[#3c5a99] font-bold hover:underline">
+                        Sign in
+                    </button>
+                </p>
+            </div>
         </>
     );
 }

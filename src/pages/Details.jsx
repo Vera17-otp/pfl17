@@ -16,18 +16,18 @@ export default function RoomManagement() {
     const getStatusColor = (status) => {
         switch(status) {
             case 'Premium': return 'bg-amber-500 text-white';
-            case 'Best Seller': return 'bg-blue-500 text-white';
-            case 'Spacious': return 'bg-emerald-500 text-white';
-            default: return 'bg-slate-500 text-white';
+            case 'Best Seller': return 'bg-[#76D1E3] text-white'; // Sky blue
+            case 'Spacious': return 'bg-[#2C7A8C] text-white'; // Sky blue tua
+            default: return 'bg-[#5EC4D9] text-white'; // Sky blue medium
         }
     };
 
     return (
-        <div className="bg-[#F0F4F8] min-h-screen p-3">
+        <div className="bg-[#EBF6FA] min-h-screen p-3"> {/* Background sky blue sangat muda */}
             {/* Header Compact */}
             <div className="mb-3">
-                <h1 className="font-heading text-base font-bold text-slate-800">Room Management</h1>
-                <p className="text-[9px] text-slate-400">Inventory / Room List</p>
+                <h1 className="font-heading text-base font-bold text-[#2C7A8C]">Room Management</h1> {/* Sky blue tua */}
+                <p className="text-[9px] text-[#76D1E3]">Inventory / Room List</p> {/* Sky blue utama */}
             </div>
 
             {/* Search Bar */}
@@ -36,11 +36,11 @@ export default function RoomManagement() {
                     <input 
                         type="text" 
                         placeholder="Search room type..."
-                        className="w-full bg-white border border-slate-200 rounded-md py-1.5 pl-7 pr-3 text-[10px] focus:border-blue-400 outline-none"
+                        className="w-full bg-white border border-[#C5EAF2] rounded-md py-1.5 pl-7 pr-3 text-[10px] focus:border-[#76D1E3] focus:ring-1 focus:ring-[#D4F1F8] outline-none"
                     />
-                    <FaSearch className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-[9px]" />
+                    <FaSearch className="absolute left-2 top-1/2 -translate-y-1/2 text-[#76D1E3] text-[9px]" />
                 </div>
-                <button className="bg-blue-500 hover:bg-blue-600 text-white text-[9px] font-bold px-3 py-1.5 rounded-md flex items-center gap-1">
+                <button className="bg-[#76D1E3] hover:bg-[#5EC4D9] text-white text-[9px] font-bold px-3 py-1.5 rounded-md flex items-center gap-1 shadow-sm transition-all">
                     <FaPlus size={9} /> ADD ROOM
                 </button>
             </div>
@@ -48,7 +48,7 @@ export default function RoomManagement() {
             {/* Room Grid - 2 kolom agar rapi */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {rooms.map((room) => (
-                    <div key={room.id} className="bg-white rounded-lg border border-slate-100 overflow-hidden shadow-sm hover:shadow-md transition-all">
+                    <div key={room.id} className="bg-white rounded-lg border border-[#C5EAF2] overflow-hidden shadow-sm hover:shadow-md transition-all">
                         
                         {/* Image + Info Row */}
                         <div className="flex gap-3 p-3">
@@ -78,29 +78,29 @@ export default function RoomManagement() {
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <span className="text-[9px] font-bold text-blue-600">{room.stock} left</span>
+                                        <span className="text-[9px] font-bold text-[#76D1E3]">{room.stock} left</span>
                                     </div>
                                 </div>
 
                                 {/* Price */}
                                 <div className="mt-1">
-                                    <span className="text-sm font-black text-slate-800">{formatPrice(room.price)}</span>
-                                    <span className="text-[7px] text-slate-400 ml-0.5">/night</span>
+                                    <span className="text-sm font-black text-[#2C7A8C]">{formatPrice(room.price)}</span>
+                                    <span className="text-[7px] text-[#76D1E3] ml-0.5">/night</span>
                                 </div>
 
                                 {/* Facilities */}
                                 <div className="flex gap-2 mt-2">
                                     <div className="flex items-center gap-1">
-                                        <FaBed size={9} className="text-slate-400" />
-                                        <span className="text-[8px] text-slate-500">{room.beds}</span>
+                                        <FaBed size={9} className="text-[#76D1E3]" />
+                                        <span className="text-[8px] text-[#5EC4D9]">{room.beds}</span>
                                     </div>
                                     <div className="flex items-center gap-1">
-                                        <FaUserFriends size={9} className="text-slate-400" />
-                                        <span className="text-[8px] text-slate-500">{room.guests}</span>
+                                        <FaUserFriends size={9} className="text-[#76D1E3]" />
+                                        <span className="text-[8px] text-[#5EC4D9]">{room.guests}</span>
                                     </div>
                                     <div className="flex items-center gap-1">
-                                        <FaWifi size={9} className="text-slate-400" />
-                                        <span className="text-[8px] text-slate-500">WiFi</span>
+                                        <FaWifi size={9} className="text-[#76D1E3]" />
+                                        <span className="text-[8px] text-[#5EC4D9]">WiFi</span>
                                     </div>
                                 </div>
                             </div>
@@ -108,10 +108,10 @@ export default function RoomManagement() {
 
                         {/* Action Buttons */}
                         <div className="flex gap-2 p-3 pt-0">
-                            <button className="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-[8px] font-bold py-1.5 rounded-md transition-all">
+                            <button className="flex-1 bg-[#76D1E3] hover:bg-[#5EC4D9] text-white text-[8px] font-bold py-1.5 rounded-md transition-all shadow-sm">
                                 + ADD RESERVATION
                             </button>
-                            <button className="px-3 py-1.5 border border-slate-200 rounded-md text-[8px] font-bold text-slate-500 hover:bg-slate-50 transition-all">
+                            <button className="px-3 py-1.5 border border-[#C5EAF2] rounded-md text-[8px] font-bold text-[#5EC4D9] hover:bg-[#EBF6FA] transition-all">
                                 Details
                             </button>
                         </div>
@@ -119,23 +119,23 @@ export default function RoomManagement() {
                 ))}
             </div>
 
-            {/* Bottom Stats */}
+            {/* Bottom Stats - WARNA SKY BLUE */}
             <div className="mt-3 grid grid-cols-4 gap-2">
-                <div className="bg-white rounded-md p-2 text-center border border-slate-100 shadow-sm">
-                    <p className="text-sm font-black text-slate-800">4</p>
-                    <p className="text-[6px] font-bold text-slate-400 uppercase">Room Types</p>
+                <div className="bg-white rounded-md p-2 text-center border border-[#C5EAF2] shadow-sm">
+                    <p className="text-sm font-black text-[#2C7A8C]">4</p>
+                    <p className="text-[6px] font-bold text-[#76D1E3] uppercase">Room Types</p>
                 </div>
-                <div className="bg-white rounded-md p-2 text-center border border-slate-100 shadow-sm">
-                    <p className="text-sm font-black text-slate-800">46</p>
-                    <p className="text-[6px] font-bold text-slate-400 uppercase">Total Units</p>
+                <div className="bg-white rounded-md p-2 text-center border border-[#C5EAF2] shadow-sm">
+                    <p className="text-sm font-black text-[#2C7A8C]">46</p>
+                    <p className="text-[6px] font-bold text-[#76D1E3] uppercase">Total Units</p>
                 </div>
-                <div className="bg-white rounded-md p-2 text-center border border-slate-100 shadow-sm">
-                    <p className="text-sm font-black text-emerald-600">24</p>
-                    <p className="text-[6px] font-bold text-slate-400 uppercase">Available</p>
+                <div className="bg-white rounded-md p-2 text-center border border-[#C5EAF2] shadow-sm">
+                    <p className="text-sm font-black text-[#76D1E3]">24</p>
+                    <p className="text-[6px] font-bold text-[#76D1E3] uppercase">Available</p>
                 </div>
-                <div className="bg-white rounded-md p-2 text-center border border-slate-100 shadow-sm">
-                    <p className="text-sm font-black text-blue-600">84%</p>
-                    <p className="text-[6px] font-bold text-slate-400 uppercase">Occupancy</p>
+                <div className="bg-white rounded-md p-2 text-center border border-[#C5EAF2] shadow-sm">
+                    <p className="text-sm font-black text-[#76D1E3]">84%</p>
+                    <p className="text-[6px] font-bold text-[#76D1E3] uppercase">Occupancy</p>
                 </div>
             </div>
         </div>
