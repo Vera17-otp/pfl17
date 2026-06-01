@@ -5,21 +5,17 @@ import PageHeader from "../components/PageHeader";
 
 export default function MainLayouts() {
     return (
-        <div className="flex h-screen w-full bg-[#F0F4F8] font-sans text-slate-700 overflow-hidden">
-            {/* Sidebar tetap di kiri */}
+        <div className="hotelify-layout">
             <Sidebar />
-
-            <div className="flex-1 flex flex-col min-w-0">
-                {/* Header Utama (Navigasi Atas) */}
+            
+            <div className="hotelify-main">
                 <Header />
-
-                {/* Area Konten Utama */}
-                <main className="flex-1 overflow-y-auto p-6"> 
-                    {/* 1. PageHeader dipanggil di sini agar muncul */}
+                
+                <main className="hotelify-content">
+                    {/* PageHeader might need to be styled or removed based on specific page needs, but keeping it for compatibility */}
                     <PageHeader /> 
-
-                    {/* 2. Beri jarak antara PageHeader dan Konten (Outlet) */}
-                    <div className="mt-6">
+                    
+                    <div style={{ marginTop: '24px' }}>
                         <Outlet />
                     </div>
                 </main>

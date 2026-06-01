@@ -17,6 +17,7 @@ const Reservations = lazy(() => import("./pages/reservations")); // Sesuaikan hu
 const Guest = lazy(() => import("./pages/guest"));
 const Rooms = lazy(() => import("./pages/rooms"));
 const Details = lazy(() => import("./pages/Details"));
+const ComponentLibrary = lazy(() => import("./pages/ComponentLibrary"));
 
 // Pages - Authentication
 const Login = lazy(() => import("./pages/Auth/Login"));
@@ -37,6 +38,7 @@ function App() {
         "/guest", 
         "/rooms", 
         "/details",
+        "/components",
         "/login", 
         "/register", 
         "/forgot"
@@ -63,6 +65,7 @@ function App() {
                     <Route path="/guest" element={<Guest />} />
                     <Route path="/rooms" element={<Rooms />} />
                     <Route path="/details" element={<Details />} />
+                    <Route path="/components" element={<ComponentLibrary />} />
                 </Route>
 
                 {/* --- GRUP LAYOUT AUTH (Halaman Login/Register Tanpa Sidebar) --- */}

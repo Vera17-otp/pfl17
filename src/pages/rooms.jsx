@@ -1,111 +1,70 @@
-import { useState } from "react";
-import { HiOutlineKey, HiOutlineHomeModern, HiOutlineShieldCheck, HiOutlineWifi } from "react-icons/hi2";
+import React, { useState } from "react";
 import { FaBed, FaWifi, FaUsers } from "react-icons/fa";
 
 export default function Rooms() {
-    const [rooms, setRooms] = useState([
-        { id: 1, type: "Presidential Suite", roomNo: "101", price: 12500000, status: "Ready", capacity: 4, bed: "King", size: 120 },
-        { id: 2, type: "Executive King", roomNo: "305", price: 4200000, status: "Occupied", capacity: 2, bed: "King", size: 65 },
-        { id: 3, type: "Deluxe Family", roomNo: "212", price: 2800000, status: "Cleaning", capacity: 4, bed: "Queen + Single", size: 55 },
-        { id: 4, type: "Luxury Twin", roomNo: "408", price: 3500000, status: "Ready", capacity: 2, bed: "Twin", size: 48 },
+    const [rooms] = useState([
+        { id: 1, type: "Presidential Suite", roomNo: "101", price: 1250, status: "Ready", capacity: 4, bed: "King" },
+        { id: 2, type: "Executive King", roomNo: "305", price: 420, status: "Occupied", capacity: 2, bed: "King" },
+        { id: 3, type: "Deluxe Family", roomNo: "212", price: 280, status: "Cleaning", capacity: 4, bed: "Queen + Single" },
+        { id: 4, type: "Luxury Twin", roomNo: "408", price: 350, status: "Ready", capacity: 2, bed: "Twin" },
     ]);
 
-    const formatPrice = (price) => {
-        return `Rp ${(price / 1000).toFixed(0)}k`;
-    };
-
-    const getStatusColor = (status) => {
-        switch(status) {
-            case 'Ready': return 'bg-[#D4F1F8] text-[#2C7A8C]'; // Sky blue sangat muda
-            case 'Occupied': return 'bg-[#E0F2FE] text-[#1E3A8A]';
-            case 'Cleaning': return 'bg-[#FEF3C7] text-[#92400E]';
-            default: return 'bg-slate-100 text-slate-600';
-        }
+    const getStatusClass = (status) => {
+        if (status === 'Ready') return 'confirmed';
+        if (status === 'Cleaning') return 'pending';
+        return 'cancelled';
     };
 
     return (
-        <div className="bg-[#EBF6FA] min-h-screen p-3"> {/* Background sky blue sangat muda */}
-            {/* Header Compact */}
-            <div className="mb-4">
-                <h1 className="font-heading text-xl font-bold text-[#2C7A8C]">Room Assets</h1> {/* Sky blue tua */}
-                <p className="text-[9px] text-[#76D1E3] mt-0.5">Groom Room / Inventory</p> {/* Sky blue utama */}
+        <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                <div>
+                    <h1 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '4px' }}>Room Assets</h1>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Manage all hotel rooms and availability.</p>
+                </div>
+                <button className="btn-primary">+ Add Room</button>
             </div>
 
-            {/* Room Grid - 2 kolom */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="dashboard-grid">
                 {rooms.map((room) => (
-                    <div 
-                        key={room.id}
-                        className="bg-white rounded-xl border border-[#C5EAF2] overflow-hidden shadow-sm hover:shadow-md transition-all"
-                    >
-                        {/* Header Card - GRADIENT SKY BLUE */}
-                        <div className="px-4 py-3 bg-gradient-to-r from-[#76D1E3] to-[#5EC4D9] border-b border-[#A4DDEB] flex justify-between items-center">
-                            <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-lg bg-[#D4F1F8] flex items-center justify-center text-[#2C7A8C]">
-                                    <FaBed size={14} />
+                    <div key={room.id} style={{ gridColumn: 'span 3' }} className="table-card">
+                        <div style={{ padding: '20px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(79, 70, 229, 0.03)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div className="kpi-icon primary" style={{ width: '40px', height: '40px', fontSize: '1rem' }}>
+                                    <FaBed />
                                 </div>
                                 <div>
-                                    <span className="font-bold text-white text-sm">Room {room.roomNo}</span>
-                                    <p className="text-[8px] text-[#D4F1F8]">{room.type}</p>
+                                    <h4 style={{ fontWeight: 600 }}>Room {room.roomNo}</h4>
+                                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{room.type}</p>
                                 </div>
                             </div>
-                            <span className={`text-[8px] font-bold px-2 py-1 rounded-full ${getStatusColor(room.status)}`}>
-                                {room.status}
-                            </span>
                         </div>
-
-                        {/* Body Card */}
-                        <div className="p-4">
-                            {/* Price */}
-                            <div className="mb-3">
-                                <span className="text-lg font-black text-[#2C7A8C]">{formatPrice(room.price)}</span>
-                                <span className="text-[8px] text-[#76D1E3] ml-1">/ night</span>
+                        <div style={{ padding: '20px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                <div>
+                                    <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--primary-color)' }}>${room.price}</span>
+                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>/ night</span>
+                                </div>
+                                <span className={`status-badge ${getStatusClass(room.status)}`}>{room.status}</span>
                             </div>
-
-                            {/* Facilities Icons */}
-                            <div className="flex gap-3 mb-3 pb-3 border-b border-[#D4F1F8]">
-                                <div className="flex items-center gap-1">
-                                    <FaUsers size={10} className="text-[#76D1E3]" />
-                                    <span className="text-[9px] text-[#2C7A8C]">{room.capacity} guests</span>
+                            <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', borderBottom: '1px solid var(--border-color)', paddingBottom: '16px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                                    <FaUsers /> {room.capacity}
                                 </div>
-                                <div className="flex items-center gap-1">
-                                    <FaBed size={10} className="text-[#76D1E3]" />
-                                    <span className="text-[9px] text-[#2C7A8C]">{room.bed}</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                                    <FaBed /> {room.bed}
                                 </div>
-                                <div className="flex items-center gap-1">
-                                    <FaWifi size={10} className="text-[#76D1E3]" />
-                                    <span className="text-[9px] text-[#2C7A8C]">Free WiFi</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                                    <FaWifi />
                                 </div>
                             </div>
-
-                            {/* Action Buttons - WARNA SKY BLUE */}
-                            <div className="flex gap-2">
-                                <button className="flex-1 bg-[#76D1E3] hover:bg-[#5EC4D9] text-white text-[9px] font-bold py-2 rounded-lg transition-all">
-                                    + ADD RESERVATION
-                                </button>
-                                <button className="px-3 py-2 border border-[#76D1E3] rounded-lg text-[9px] font-bold text-[#2C7A8C] hover:bg-[#D4F1F8] transition-all">
-                                    Details
-                                </button>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button className="btn-primary" style={{ flex: 1, padding: '8px' }}>Book Now</button>
+                                <button style={{ padding: '8px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', backgroundColor: 'transparent', cursor: 'pointer' }}>Details</button>
                             </div>
                         </div>
                     </div>
                 ))}
-            </div>
-
-            {/* Bottom Stats - WARNA SKY BLUE */}
-            <div className="mt-4 grid grid-cols-3 gap-3">
-                <div className="bg-white rounded-lg p-3 text-center border border-[#C5EAF2] shadow-sm">
-                    <p className="text-lg font-black text-[#2C7A8C]">4</p>
-                    <p className="text-[7px] font-bold text-[#76D1E3] uppercase">Total Rooms</p>
-                </div>
-                <div className="bg-white rounded-lg p-3 text-center border border-[#C5EAF2] shadow-sm">
-                    <p className="text-lg font-black text-[#76D1E3]">2</p>
-                    <p className="text-[7px] font-bold text-[#76D1E3] uppercase">Ready</p>
-                </div>
-                <div className="bg-white rounded-lg p-3 text-center border border-[#C5EAF2] shadow-sm">
-                    <p className="text-lg font-black text-[#76D1E3]">84%</p>
-                    <p className="text-[7px] font-bold text-[#76D1E3] uppercase">Occupancy</p>
-                </div>
             </div>
         </div>
     );
