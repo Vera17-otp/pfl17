@@ -1,16 +1,5 @@
 import { NavLink } from "react-router-dom";
 import { FaChartPie, FaBed, FaCalendarCheck, FaUsers, FaCog, FaPuzzlePiece } from "react-icons/fa";
-import {
-  Sidebar as ShadcnSidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "./ui/sidebar";
 
 export default function Sidebar() {
     const menuList = [
@@ -23,35 +12,25 @@ export default function Sidebar() {
     ];
 
     return (
-        <ShadcnSidebar className="hotelify-sidebar">
-            <SidebarHeader className="sidebar-header p-4 border-b">
-                <div className="sidebar-logo font-bold text-xl text-blue-600">
+        <aside className="hotelify-sidebar">
+            <div className="sidebar-header">
+                <div className="sidebar-logo">
                     <span>Hotelify</span>
                 </div>
-            </SidebarHeader>
+            </div>
 
-            <SidebarContent>
-                <SidebarGroup>
-                    <SidebarGroupLabel>Menu</SidebarGroupLabel>
-                    <SidebarGroupContent>
-                        <SidebarMenu>
-                            {menuList.map((item) => (
-                                <SidebarMenuItem key={item.id}>
-                                    <SidebarMenuButton asChild>
-                                        <NavLink 
-                                            to={item.to} 
-                                            className={({ isActive }) => `flex items-center gap-3 py-2 ${isActive ? "bg-blue-50 text-blue-600 font-medium" : "text-gray-500 hover:text-gray-900"}`}
-                                        >
-                                            {item.icon}
-                                            <span>{item.name}</span>
-                                        </NavLink>
-                                    </SidebarMenuButton>
-                                </SidebarMenuItem>
-                            ))}
-                        </SidebarMenu>
-                    </SidebarGroupContent>
-                </SidebarGroup>
-            </SidebarContent>
-        </ShadcnSidebar>
+            <nav className="sidebar-menu">
+                {menuList.map((item) => (
+                    <NavLink 
+                        key={item.id}
+                        to={item.to} 
+                        className={({ isActive }) => `menu-item ${isActive ? "active" : ""}`}
+                    >
+                        {item.icon}
+                        <span>{item.name}</span>
+                    </NavLink>
+                ))}
+            </nav>
+        </aside>
     );
 }
