@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FaBell, FaSearch, FaEnvelope } from "react-icons/fa";
 import Input from "./ui/form/Input";
-import Avatar from "./ui/basic/Avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 export default function Header({ searchTerm, setSearchTerm }) {
     return (
@@ -32,7 +32,9 @@ export default function Header({ searchTerm, setSearchTerm }) {
                         <span className="user-name">Vera Zakia</span>
                         <span className="user-role">General Manager</span>
                     </div>
-                    <Avatar fallback="VZ" />
+                    <Avatar>
+                        <AvatarFallback>VZ</AvatarFallback>
+                    </Avatar>
                 </div>
             </div>
         </header>

@@ -1,12 +1,13 @@
 import React from 'react';
 import { FaCalendarCheck, FaBed, FaDollarSign, FaUserClock, FaEllipsisH } from 'react-icons/fa';
-import Grid from '../components/ui/layout/Grid';
 import Card from '../components/ui/data-display/Card';
 import Badge from '../components/ui/data-display/Badge';
 import Button from '../components/ui/basic/Button';
 import Table from '../components/ui/data-display/Table';
 import Text from '../components/ui/basic/Text';
 import Avatar from '../components/ui/basic/Avatar';
+import { ButtonGroup } from '../components/ui/button-group';
+import { Button as ShadcnButton } from '../components/ui/button';
 
 const Dashboard = () => {
   const kpis = [
@@ -25,24 +26,28 @@ const Dashboard = () => {
   ];
 
   const getStatusVariant = (status) => {
-      if (status === 'Confirmed') return 'success';
-      if (status === 'Pending') return 'warning';
-      return 'danger';
+    if (status === 'Confirmed') return 'success';
+    if (status === 'Pending') return 'warning';
+    return 'danger';
   };
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <div>
-          <Text variant="h1" size="xl" weight="bold" style={{ marginBottom: '4px' }}>Dashboard Overview</Text>
-          <Text variant="p" size="sm" color="var(--text-muted)">Welcome back, Vera. Here's what's happening at your hotel today.</Text>
+      <div className="dashboard-hero">
+        <div className="dashboard-hero-left">
+          <Text variant="h1" size="xl" weight="bold" style={{ marginBottom: '8px' }}>Dashboard Overview</Text>
+          <Text variant="p" size="sm" color="var(--text-muted)">Welcome back, Vera. Here's a quick look at your hotel activity and performance.</Text>
         </div>
-        <Button variant="primary">+ New Booking</Button>
+
+        <div className="dashboard-hero-actions">
+          <Button variant="primary" size="lg">+ New Booking</Button>
+          <div className="dashboard-hero-chip">Live dashboard</div>
+        </div>
       </div>
 
-      <Grid columns={4} gap="24px" style={{ marginBottom: '32px' }}>
+      <div className="dashboard-grid" style={{ marginBottom: '32px' }}>
         {kpis.map((kpi, idx) => (
-          <Card key={idx} style={{ padding: '24px', display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <Card key={idx} className="kpi-card" style={{ gridColumn: 'span 3' }}>
             <div className={`kpi-icon ${kpi.type}`}>
               {kpi.icon}
             </div>
@@ -52,97 +57,99 @@ const Dashboard = () => {
             </div>
           </Card>
         ))}
-      </Grid>
+      </div>
 
-      <Grid columns={3} gap="24px" style={{ marginBottom: 0 }}>
-        {/* Main Table Area */}
-        <div style={{ gridColumn: 'span 2' }}>
-          <Card padding="0">
+      <div className="dashboard-grid" style={{ marginBottom: 0 }}>
+        <div style={{ gridColumn: 'span 8' }}>
+          <Card className="table-card" padding="0">
             <div className="table-header">
-              <span className="table-title">Recent Bookings</span>
-              <button className="icon-btn"><FaEllipsisH /></button>
+              <div>
+                <span className="table-title">Recent Bookings</span>
+                <div style={{ color: 'var(--text-muted)', marginTop: '6px', fontSize: '0.95rem' }}>Latest reservations and room status for the week.</div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <ButtonGroup>
+                  <ShadcnButton variant="outline" size="sm">Today</ShadcnButton>
+                  <ShadcnButton variant="outline" size="sm">7 Days</ShadcnButton>
+                  <ShadcnButton variant="outline" size="sm">30 Days</ShadcnButton>
+                </ButtonGroup>
+                <button className="icon-btn"><FaEllipsisH /></button>
+              </div>
             </div>
-            <Table 
-                headers={['Booking ID', 'Guest Name', 'Room Type', 'Check In', 'Status', 'Amount']}
-                data={recentBookings}
-                renderRow={(booking, idx) => (
-                    <>
-                        <td style={{ fontWeight: 500, color: 'var(--primary-color)' }}>{booking.id}</td>
-                        <td>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <Avatar fallback={booking.guest.charAt(0)} size={32} />
-                                <span style={{ fontWeight: 500 }}>{booking.guest}</span>
-                            </div>
-                        </td>
-                        <td style={{ color: 'var(--text-muted)' }}>{booking.room}</td>
-                        <td style={{ color: 'var(--text-muted)' }}>{booking.checkIn}</td>
-                        <td>
-                            <Badge variant={getStatusVariant(booking.status)}>{booking.status}</Badge>
-                        </td>
-                        <td style={{ fontWeight: 600 }}>{booking.amount}</td>
-                    </>
-                )}
+            <Table
+              className="hotel-table"
+              headers={['Booking ID', 'Guest Name', 'Room Type', 'Check In', 'Check Out', 'Status', 'Amount']}
+              data={recentBookings}
+              renderRow={(booking, idx) => (
+                <>
+                  <td style={{ fontWeight: 600, color: 'var(--primary-color)' }}>{booking.id}</td>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <Avatar fallback={booking.guest.charAt(0)} size={34} />
+                      <span style={{ fontWeight: 600 }}>{booking.guest}</span>
+                    </div>
+                  </td>
+                  <td style={{ color: 'var(--text-muted)' }}>{booking.room}</td>
+                  <td style={{ color: 'var(--text-muted)' }}>{booking.checkIn}</td>
+                  <td style={{ color: 'var(--text-muted)' }}>{booking.checkOut}</td>
+                  <td>
+                    <Badge variant={getStatusVariant(booking.status)}>{booking.status}</Badge>
+                  </td>
+                  <td style={{ fontWeight: 700 }}>{booking.amount}</td>
+                </>
+              )}
             />
           </Card>
         </div>
 
-        {/* Analytics/Sidebar Area */}
-        <div style={{ gridColumn: 'span 1', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          <Card padding="24px">
-            <Text variant="h3" size="lg" weight="bold" style={{ marginBottom: '20px' }}>Room Occupancy</Text>
-            
-            {/* Simple CSS-based Donut Chart visualization */}
-            <div style={{ display: 'flex', justifyContent: 'center', margin: '20px 0' }}>
-              <div style={{ 
-                position: 'relative', width: '150px', height: '150px', 
-                borderRadius: '50%', background: 'conic-gradient(var(--primary-color) 0% 75%, var(--border-color) 75% 100%)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center'
-              }}>
-                <div style={{ 
-                  width: '110px', height: '110px', backgroundColor: 'var(--surface-color)', 
-                  borderRadius: '50%', display: 'flex', flexDirection: 'column', 
-                  alignItems: 'center', justifyContent: 'center' 
-                }}>
-                  <span style={{ fontSize: '1.8rem', fontWeight: 700 }}>75%</span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Occupied</span>
+        <div style={{ gridColumn: 'span 4', display: 'grid', gap: '24px' }}>
+          <Card className="table-card">
+            <Text variant="h3" size="lg" weight="bold" style={{ marginBottom: '18px' }}>Room Occupancy</Text>
+            <div className="occupancy-chart">
+              <div className="occupancy-donut">
+                <div className="occupancy-donut-label">
+                  <span style={{ fontSize: '1.8rem', fontWeight: 700, lineHeight: 1 }}><strong>75%</strong></span>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', letterSpacing: '0.08em', marginTop: '4px' }}>Occupied</div>
                 </div>
               </div>
             </div>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '24px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: 'var(--primary-color)' }}></div>
+            <div className="occupancy-metrics">
+              <div className="occupancy-metric">
+                <div>
+                  <span className="occupancy-dot occupied" />
                   <Text variant="span" size="sm" color="var(--text-muted)" style={{ margin: 0 }}>Occupied Rooms</Text>
                 </div>
-                <span style={{ fontWeight: 600 }}>124</span>
+                <span style={{ fontWeight: 700 }}>124</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: 'var(--border-color)' }}></div>
+              <div className="occupancy-metric">
+                <div>
+                  <span className="occupancy-dot available" />
                   <Text variant="span" size="sm" color="var(--text-muted)" style={{ margin: 0 }}>Available Rooms</Text>
                 </div>
-                <span style={{ fontWeight: 600 }}>42</span>
+                <span style={{ fontWeight: 700 }}>42</span>
               </div>
             </div>
           </Card>
 
-          <Card padding="24px" style={{ flex: 1 }}>
-            <Text variant="h3" size="lg" weight="bold" style={{ marginBottom: '20px' }}>Quick Actions</Text>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <Button variant="outline" style={{ justifyContent: 'space-between', width: '100%', borderColor: 'var(--border-color)', color: 'var(--text-main)' }}>
-                <span>Create Invoice</span> <span>→</span>
+          <Card className="table-card" style={{ flex: 1 }}>
+            <Text variant="h3" size="lg" weight="bold" style={{ marginBottom: '18px' }}>Quick Actions</Text>
+            <div className="quick-actions-group">
+              <Button variant="secondary" style={{ width: '100%', justifyContent: 'space-between' }}>
+                <span>Create Invoice</span>
+                <span>→</span>
               </Button>
-              <Button variant="outline" style={{ justifyContent: 'space-between', width: '100%', borderColor: 'var(--border-color)', color: 'var(--text-main)' }}>
-                <span>Manage Housekeeping</span> <span>→</span>
+              <Button variant="secondary" style={{ width: '100%', justifyContent: 'space-between' }}>
+                <span>Manage Housekeeping</span>
+                <span>→</span>
               </Button>
-              <Button variant="outline" style={{ justifyContent: 'space-between', width: '100%', borderColor: 'var(--border-color)', color: 'var(--text-main)' }}>
-                <span>Generate Report</span> <span>→</span>
+              <Button variant="secondary" style={{ width: '100%', justifyContent: 'space-between' }}>
+                <span>Generate Report</span>
+                <span>→</span>
               </Button>
             </div>
           </Card>
         </div>
-      </Grid>
+      </div>
     </div>
   );
 };
