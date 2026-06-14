@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { useState } from 'react'
 import ReactDOM from 'react-dom/client'
 import FrameworkListSearchFilter from './FrameworkListSearchFilter' // Sesuaikan path-nya
