@@ -602,3 +602,91 @@ body {
     opacity: 1;
   }
 }
+
+/* ════════════════════════════════════════════════════
+   GUEST PORTAL CSS UTILITIES
+   ════════════════════════════════════════════════════ */
+
+/* Left branding panel — visible only on desktop */
+.gp-left-panel {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .gp-left-panel {
+    display: flex !important;
+  }
+  /* Hide mobile logo on desktop */
+  .gp-mobile-logo {
+    display: none;
+  }
+}
+
+/* Desktop nav links — hidden on mobile */
+.gp-desktop-nav {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .gp-desktop-nav {
+    display: flex !important;
+  }
+}
+
+/* Mobile-only elements */
+.gp-mobile-only {
+  display: flex;
+}
+
+@media (min-width: 768px) {
+  .gp-mobile-only {
+    display: none !important;
+  }
+}
+
+/* Bottom nav — visible on mobile only */
+.gp-bottom-nav {
+  display: flex;
+}
+
+@media (min-width: 768px) {
+  .gp-bottom-nav {
+    display: none !important;
+  }
+  /* Add bottom padding compensation for desktop (no bottom nav) */
+  main {
+    padding-bottom: 40px !important;
+  }
+}
+
+/* Fade in animation for guest pages */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.gp-page-enter {
+  animation: fadeIn 0.3s ease;
+}
+
+/* Guest portal shortcut grid — responsive */
+@media (max-width: 640px) {
+  .gp-shortcuts-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 8px !important;
+  }
+}
+
+/* Guest portal bottom grid — stack on mobile */
+@media (max-width: 768px) {
+  .gp-bottom-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Guest summary cards — 2 columns on mobile */
+@media (max-width: 640px) {
+  .gp-summary-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}

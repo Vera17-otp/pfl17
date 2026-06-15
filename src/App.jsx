@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from "react";
-import { Routes, Route, useLocation } from "react-router-dom";
+import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 
 // Mengimpor CSS utama (yang berisi konfigurasi Font & Tailwind)
 import "./assets/tailwind.css";
@@ -10,6 +10,8 @@ import Loading from "./components/Loading";
 // Lazy Loading untuk Optimasi Performa
 const MainLayouts = lazy(() => import("./layouts/MainLayouts"));
 const AuthLayout = lazy(() => import("./layouts/AuthLayouts"));
+const GuestAuthLayout = lazy(() => import("./layouts/GuestAuthLayout"));
+const GuestLayout = lazy(() => import("./layouts/GuestLayout"));
 
 // Pages - Management System
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -32,6 +34,36 @@ const Login = lazy(() => import("./pages/Auth/Login"));
 const Register = lazy(() => import("./pages/Auth/Register"));
 const Forgot = lazy(() => import("./pages/Auth/Forgot"));
 
+// Pages - Guest Portal
+const GuestLogin = lazy(() => import("./pages/guest/GuestLogin"));
+const GuestRegister = lazy(() => import("./pages/guest/GuestRegister"));
+const GuestForgot = lazy(() => import("./pages/guest/GuestForgot"));
+const GuestDashboard = lazy(() => import("./pages/guest/GuestDashboard"));
+const GuestProfile = lazy(() => import("./pages/guest/GuestProfile"));
+const GuestHomepage = lazy(() => import("./pages/guest/GuestHomepage"));
+const GuestRoomDetail = lazy(() => import("./pages/guest/GuestRoomDetail"));
+const GuestBooking = lazy(() => import("./pages/guest/GuestBooking"));
+const GuestReservations = lazy(() => import("./pages/guest/GuestReservations"));
+const GuestReservationDetail = lazy(() => import("./pages/guest/GuestReservationDetail"));
+const GuestPreCheckIn = lazy(() => import("./pages/guest/GuestPreCheckIn"));
+const GuestAddOns = lazy(() => import("./pages/guest/GuestAddOns"));
+const GuestRoomService = lazy(() => import("./pages/guest/GuestRoomService"));
+const GuestHousekeeping = lazy(() => import("./pages/guest/GuestHousekeeping"));
+const GuestReportIssue = lazy(() => import("./pages/guest/GuestReportIssue"));
+const GuestChat = lazy(() => import("./pages/guest/GuestChat"));
+const GuestFacilities = lazy(() => import("./pages/guest/GuestFacilities"));
+const GuestBilling = lazy(() => import("./pages/guest/GuestBilling"));
+const GuestInvoice = lazy(() => import("./pages/guest/GuestInvoice"));
+const GuestHistory = lazy(() => import("./pages/guest/GuestHistory"));
+const GuestSurvey = lazy(() => import("./pages/guest/GuestSurvey"));
+const GuestLoyalty = lazy(() => import("./pages/guest/GuestLoyalty"));
+const GuestPromo = lazy(() => import("./pages/guest/GuestPromo"));
+const GuestLayanan = lazy(() => import("./pages/guest/GuestLayanan"));
+const GuestMembership = lazy(() => import("./pages/guest/GuestMembership"));
+const GuestMembershipPayment = lazy(() => import("./pages/guest/GuestMembershipPayment"));
+const GuestAnalytics = lazy(() => import("./pages/guest/GuestAnalytics"));
+const GuestSubscription = lazy(() => import("./pages/guest/GuestSubscription"));
+
 // Komponen Pendukung
 const NotFound = lazy(() => import("./components/NotFound"));
 
@@ -42,7 +74,7 @@ function App() {
     const validRoutes = [
         "/", 
         "/reservations", 
-        "/guest", 
+        "/guests", 
         "/rooms", 
         "/details",
         "/components",
@@ -59,10 +91,20 @@ function App() {
         "/forgot"
     ];
     
-    const isErrorPage = !validRoutes.includes(location.pathname);
+    const isErrorPage = !validRoutes.includes(location.pathname)
+        && !location.pathname.startsWith("/guest/")
+        && location.pathname !== "/beranda";
 
     // Tampilkan NotFound jika URL tidak dikenal
     if (isErrorPage) {
+        // Fallback untuk route guest yang tidak ditemukan
+        if (location.pathname.startsWith("/guest")) {
+            return (
+                <Suspense fallback={<Loading />}>
+                    <Navigate to="/guest" replace />
+                </Suspense>
+            );
+        }
         return (
             <Suspense fallback={<Loading />}>
                 <NotFound />
@@ -77,7 +119,7 @@ function App() {
                 <Route element={<MainLayouts />}>
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/reservations" element={<Reservations />} />
-                    <Route path="/guest" element={<Guest />} />
+                    <Route path="/guests" element={<Guest />} />
                     <Route path="/rooms" element={<Rooms />} />
                     <Route path="/details" element={<Details />} />
                     <Route path="/components" element={<ComponentLibrary />} />
@@ -96,6 +138,49 @@ function App() {
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
                     <Route path="/forgot" element={<Forgot />} />
+                </Route>
+
+                {/* --- GUEST PORTAL AUTH (Halaman Login/Register Tamu) --- */}
+                <Route element={<GuestAuthLayout />}>
+                    <Route path="/guest/login" element={<GuestLogin />} />
+                    <Route path="/guest/register" element={<GuestRegister />} />
+                    <Route path="/guest/lupa-password" element={<GuestForgot />} />
+                </Route>
+
+                {/* --- BERANDA PUBLIK TAMU (Tanpa Auth, Layout Mandiri) --- */}
+                <Route path="/beranda" element={<GuestHomepage />} />
+                <Route path="/guest/beranda" element={<GuestHomepage />} />
+                <Route path="/guest" element={<GuestHomepage />} />
+                <Route path="/guest/kamar/:roomId" element={<GuestRoomDetail />} />
+                <Route path="/guest/booking/:roomId" element={<GuestBooking />} />
+                <Route path="/guest/booking" element={<GuestHomepage />} />
+
+                {/* --- GUEST PORTAL APP (Halaman Tamu Terautentikasi) --- */}
+                <Route element={<GuestLayout />}>
+                    <Route path="/guest/dashboard" element={<GuestDashboard />} />
+                    <Route path="/guest/profil" element={<GuestProfile />} />
+                    <Route path="/guest/reservasi" element={<GuestReservations />} />
+                    <Route path="/guest/reservasi/:bookingId" element={<GuestReservationDetail />} />
+                    <Route path="/guest/pre-checkin/:bookingId" element={<GuestPreCheckIn />} />
+                    <Route path="/guest/tambah-layanan/:bookingId" element={<GuestAddOns />} />
+                    <Route path="/guest/layanan" element={<GuestLayanan />} />
+                    <Route path="/guest/layanan/makanan" element={<GuestRoomService />} />
+                    <Route path="/guest/layanan/housekeeping" element={<GuestHousekeeping />} />
+                    <Route path="/guest/keluhan" element={<GuestReportIssue />} />
+                    <Route path="/guest/chat" element={<GuestChat />} />
+                    <Route path="/guest/fasilitas" element={<GuestFacilities />} />
+                    <Route path="/guest/tagihan" element={<GuestBilling />} />
+                    <Route path="/guest/invoice/:bookingId" element={<GuestInvoice />} />
+                    <Route path="/guest/riwayat-inap" element={<GuestHistory />} />
+                    <Route path="/guest/survei/:bookingId" element={<GuestSurvey />} />
+                    <Route path="/guest/loyalitas" element={<GuestLoyalty />} />
+                    <Route path="/guest/riwayat" element={<GuestDashboard />} />
+                    <Route path="/guest/promo" element={<GuestPromo />} />
+                    <Route path="/guest/layanan-utama" element={<GuestLayanan />} />
+                    <Route path="/guest/membership" element={<GuestMembership />} />
+                    <Route path="/guest/membership/pembayaran" element={<GuestMembershipPayment />} />
+                    <Route path="/guest/analitik" element={<GuestAnalytics />} />
+                    <Route path="/guest/langganan" element={<GuestSubscription />} />
                 </Route>
             </Routes>
         </Suspense>
