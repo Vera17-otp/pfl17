@@ -1,65 +1,125 @@
-import { HiOutlineMail, HiOutlineArrowLeft } from "react-icons/hi";
-import { Link } from "react-router-dom"; // Jika menggunakan React Router
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { ImSpinner2 } from "react-icons/im";
+import { FaCheckCircle, FaLock } from "react-icons/fa";
+import { supabase } from "../../lib/supabase";
 
 export default function Forgot() {
+    const [email, setEmail] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+    const [message, setMessage] = useState("");
+
+    const validate = () => {
+        if (!email.trim()) {
+            setError("Email wajib diisi.");
+            return false;
+        }
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            setError("Format email tidak valid.");
+            return false;
+        }
+        return true;
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!validate()) return;
+
+        setLoading(true);
+        setError("");
+        setMessage("");
+
+        try {
+            // Check if admin email exists
+            const { data, error: queryError } = await supabase
+                .from("Admin")
+                .select("id")
+                .eq("email", email)
+                .maybeSingle();
+
+            if (queryError) {
+                setError("Terjadi kesalahan koneksi. Silakan coba lagi.");
+                setLoading(false);
+                return;
+            }
+
+            if (!data) {
+                setError("Email tidak ditemukan dalam sistem.");
+                setLoading(false);
+                return;
+            }
+
+            // Email exists — instruct to contact admin (do not expose password)
+            setMessage("Email ditemukan. Silakan hubungi administrator sistem untuk mereset password Anda.");
+        } catch (err) {
+            setError("Terjadi kesalahan. Silakan coba lagi.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
-        <div className="relative">
-            {/* BACK BUTTON - Small & Elegant */}
-            <Link 
-                to="/login" 
-                className="absolute -top-12 left-0 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-amber-600 transition-colors"
-            >
-                <HiOutlineArrowLeft className="text-sm" />
-                Back to Portal
-            </Link>
-
-            <div className="text-center mb-10">
-                {/* ICON ENVELOPE WITH GLOW */}
-                <div className="w-16 h-16 bg-slate-900 text-amber-500 rounded-[1.5rem] flex items-center justify-center mx-auto mb-6 shadow-2xl rotate-3 border border-amber-500/20">
-                    <HiOutlineMail className="text-3xl" />
-                </div>
-                
-                <h2 className="text-3xl font-black text-slate-900 tracking-tighter italic">
-                    Security Recovery
-                </h2>
-                <p className="text-slate-400 text-sm mt-3 font-medium">
-                    Enter your credentials to receive a secure <br /> authentication link.
-                </p>
-            </div>
-
-            <form className="space-y-6">
-                <div className="group">
-                    <label 
-                        htmlFor="email"
-                        className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2 ml-2 transition-colors group-focus-within:text-amber-600"
-                    >
-                        Corporate Email Address
-                    </label>
-                    <div className="relative">
-                        <input
-                            type="email"
-                            id="email"
-                            className="w-full bg-slate-50 border-none rounded-[1.2rem] px-6 py-4 text-slate-700 font-bold focus:ring-4 focus:ring-amber-500/10 focus:bg-white shadow-inner transition-all placeholder:text-slate-300"
-                            placeholder="staff.identity@luxuryhotel.com"
-                        />
+        <>
+            <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+                    <div style={{ width: '64px', height: '64px', background: 'rgba(255,255,255,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.2)' }}>
+                        <FaLock size={26} color="#fff" />
                     </div>
                 </div>
+                <h2 style={{ fontSize: '1.8rem', fontWeight: 700, marginBottom: '8px' }}>Security Recovery</h2>
+                <p style={{ color: 'rgba(255,255,255,0.8)' }}>Enter your corporate email to verify your identity.</p>
+            </div>
 
-                <div className="pt-4">
-                    <button
-                        type="submit"
-                        className="w-full bg-slate-900 text-white font-black py-5 rounded-[1.5rem] hover:bg-amber-600 shadow-2xl shadow-amber-100 transition-all hover:-translate-y-1 active:translate-y-0 uppercase tracking-[0.1em] text-xs"
-                    >
-                        Request Reset Link
-                    </button>
+            {error && (
+                <div style={{ background: 'rgba(239, 68, 68, 0.2)', border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: 'var(--radius-md)', padding: '12px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '0.85rem', color: '#fff' }}>⚠️ {error}</span>
                 </div>
+            )}
+
+            {message && (
+                <div style={{ background: 'rgba(245, 158, 11, 0.2)', border: '1px solid rgba(245, 158, 11, 0.4)', borderRadius: 'var(--radius-md)', padding: '12px', marginBottom: '20px', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                    <FaCheckCircle color="#fbbf24" style={{ marginTop: '2px', flexShrink: 0 }} />
+                    <span style={{ fontSize: '0.85rem', color: '#fff', lineHeight: 1.5 }}>{message}</span>
+                </div>
+            )}
+
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div>
+                    <label className="glass-label">Corporate Email Address</label>
+                    <input
+                        type="email"
+                        id="email"
+                        value={email}
+                        onChange={(e) => { setEmail(e.target.value); setError(""); }}
+                        disabled={loading}
+                        className="glass-input"
+                        placeholder="staff.identity@luxuryhotel.com"
+                        required
+                    />
+                </div>
+
+                <button
+                    type="submit"
+                    disabled={loading}
+                    className="glass-button"
+                    style={{ marginTop: '10px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
+                >
+                    {loading ? <ImSpinner2 className="animate-spin" /> : "Request Reset Link"}
+                </button>
             </form>
 
-            {/* FOOTER NOTE */}
-            <p className="mt-10 text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                Contact Concierge if you have trouble <br /> 
-                <span className="text-slate-300">Technical Support: +62 812-3456-789</span>
+            <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '0.85rem', color: 'rgba(255,255,255,0.8)' }}>
+                <Link to="/login" style={{ color: '#fff', fontWeight: 600, textDecoration: 'underline' }}>
+                    Back to Portal
+                </Link>
+            </div>
+
+            <p style={{ marginTop: '32px', textAlign: 'center', fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)' }}>
+                Contact Concierge if you have trouble <br />
+                Technical Support: +62 812-3456-789
             </p>
-        </div>
+        </>
     );
 }

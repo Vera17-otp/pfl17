@@ -1,6 +1,7 @@
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useGuestAuth } from "../context/GuestAuthContext";
+import { supabase } from "../lib/supabase";
 import {
   FaHome, FaCalendarAlt, FaConciergeBell, FaExclamationCircle,
   FaStar, FaUser, FaBell, FaSignOutAlt, FaBars, FaTimes,
@@ -135,7 +136,13 @@ export default function GuestLayout() {
             </div>
 
             {/* Logout */}
-            <button onClick={() => { logout(); navigate("/guest/login"); }}
+            <button onClick={async () => {
+              await supabase.auth.signOut();
+              localStorage.removeItem("memberSession");
+              localStorage.removeItem("memberData");
+              logout();
+              navigate("/guest/login");
+            }}
               title="Keluar"
               style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "8px", width: "36px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "rgba(255,255,255,0.7)", fontSize: "0.9rem", transition: "all 0.15s" }}>
               <FaSignOutAlt />

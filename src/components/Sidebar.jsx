@@ -9,7 +9,7 @@ export default function Sidebar() {
         { id: "dashboard", name: "Dashboard", icon: <FaChartPie />, to: "/" },
         { id: "reservations", name: "Reservasi", icon: <FaCalendarCheck />, to: "/reservations" },
         { id: "rooms", name: "Data Kamar", icon: <FaBed />, to: "/rooms" },
-        { id: "guests", name: "Data Tamu", icon: <FaUsers />, to: "/guest" },
+        { id: "guests", name: "Data Tamu", icon: <FaUsers />, to: "/guests" },
         { id: "helpdesk", name: "Help Desk", icon: <FaConciergeBell />, to: "/helpdesk" },
         { id: "notifications", name: "Notifikasi", icon: <FaBell />, to: "/notifications" },
         { id: "payments", name: "Keuangan", icon: <FaFileInvoiceDollar />, to: "/payments" },
@@ -80,4 +80,4 @@ export default function Sidebar() {
             </nav>
         </aside>
     );
-}
+}

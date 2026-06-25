@@ -1,44 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
+import { supabase } from "../lib/supabase";
 
-// ── Default guest profile ─────────────────────────────────────────────────────
-const DEFAULT_PROFILE = {
-  id: "GST-PORTAL-001",
-  namaLengkap: "Budi Santoso",
-  email: "budi.santoso@email.com",
-  noHp: "081234567890",
-  tanggalLahir: "1990-05-15",
-  alamat: "Jl. Merdeka No. 10, Jakarta Selatan",
-  foto: null,
-  membership: "Gold",
-  isPremium: false,
-  premiumExpiry: null,
-  poin: 2450,
-  reservasiAktif: 2,
-  keluhanAktif: 1,
-  preferensi: {
-    tipeKamar: "Deluxe Room",
-    lantai: "Tinggi (lantai 4+)",
-    bantal: "Lunak",
-    suhuAC: "Sejuk (18-20°C)",
-    permintaanKhusus: "Dekat lift, kamar non-smoking",
-  },
-  notifikasiSettings: {
-    email: {
-      konfirmasiBooking: true,
-      reminderCheckIn: true,
-      promo: false,
-      updateKeluhan: true,
-    },
-    whatsapp: {
-      konfirmasiBooking: true,
-      reminderCheckIn: false,
-      promo: false,
-      updateKeluhan: true,
-    },
-  },
-};
-
-// ── Seed notifications ────────────────────────────────────────────────────────
+// ── Seed notifications (UI-level only, not from DB) ───────────────────────────
 const SEED_NOTIFS = [
   { id: "n1", tipe: "Reservasi", judul: "Booking Dikonfirmasi", isi: "Reservasi #BOK-5001 untuk Deluxe Room tanggal 20 Jun telah dikonfirmasi.", waktu: "2 jam lalu", dibaca: false },
   { id: "n2", tipe: "Promo", judul: "Promo Akhir Pekan 🎉", isi: "Dapatkan diskon 20% untuk menginap Sabtu-Minggu. Gunakan kode: WEEKEND20.", waktu: "5 jam lalu", dibaca: false },
@@ -47,24 +10,53 @@ const SEED_NOTIFS = [
   { id: "n5", tipe: "Reservasi", judul: "Reminder Check-in Besok", isi: "Reservasi #BOK-5000 — check-in besok pukul 14:00 di Kamar 201.", waktu: "3 hari lalu", dibaca: true },
 ];
 
-const LS_KEY = "hotelqu_guest_auth_v1";
 const LS_NOTIF_KEY = "hotelqu_guest_notifs_v1";
+
+// ── Helper: load profile from localStorage ────────────────────────────────────
+function loadProfileFromStorage() {
+  try {
+    const raw = localStorage.getItem("memberData");
+    if (raw) {
+      const data = JSON.parse(raw);
+      return {
+        id: data.user_id || data.id || null,
+        namaLengkap: data.full_name || "",
+        email: "",
+        noHp: data.phone_number || "",
+        alamat: data.address || "",
+        foto: data.avatar_url || null,
+        membership: data.membership_type || "Regular",
+        isPremium: data.membership_type === "Platinum" || data.membership_type === "Gold",
+        premiumExpiry: null,
+        poin: 0,
+        reservasiAktif: 0,
+        keluhanAktif: 0,
+        preferensi: {
+          tipeKamar: "",
+          lantai: "",
+          bantal: "",
+          suhuAC: "",
+          permintaanKhusus: "",
+        },
+        notifikasiSettings: {
+          email: { konfirmasiBooking: true, reminderCheckIn: true, promo: false, updateKeluhan: true },
+          whatsapp: { konfirmasiBooking: true, reminderCheckIn: false, promo: false, updateKeluhan: true },
+        },
+        // raw members table data for reference
+        _raw: data,
+      };
+    }
+  } catch { /* ignore */ }
+  return null;
+}
 
 // ── Context ───────────────────────────────────────────────────────────────────
 const GuestAuthContext = createContext(null);
 
 export function GuestAuthProvider({ children }) {
-  const [isLoggedIn, setIsLoggedIn] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(`${LS_KEY}_logged`)) || false; } catch { return false; }
-  });
-
-  const [profile, setProfile] = useState(() => {
-    try {
-      const raw = localStorage.getItem(LS_KEY);
-      if (raw) return JSON.parse(raw);
-    } catch { /* ignore */ }
-    return DEFAULT_PROFILE;
-  });
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [profile, setProfile] = useState(null);
+  const [sessionChecked, setSessionChecked] = useState(false);
 
   const [notifications, setNotifications] = useState(() => {
     try {
@@ -76,10 +68,73 @@ export function GuestAuthProvider({ children }) {
 
   const [toast, setToast] = useState(null);
 
-  // Persist
-  useEffect(() => { localStorage.setItem(LS_KEY, JSON.stringify(profile)); }, [profile]);
-  useEffect(() => { localStorage.setItem(LS_NOTIF_KEY, JSON.stringify(notifications)); }, [notifications]);
-  useEffect(() => { localStorage.setItem(`${LS_KEY}_logged`, JSON.stringify(isLoggedIn)); }, [isLoggedIn]);
+  // ── On mount: restore session from Supabase Auth ──────────────────────────
+  useEffect(() => {
+    async function restoreSession() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          // Load profile from localStorage (set during login)
+          const storedProfile = loadProfileFromStorage();
+          if (storedProfile) {
+            setProfile(storedProfile);
+            setIsLoggedIn(true);
+          } else {
+            // Fetch fresh from DB if localStorage is missing
+            const { data: memberData } = await supabase
+              .from("members")
+              .select("*")
+              .eq("user_id", session.user.id)
+              .single();
+            if (memberData) {
+              localStorage.setItem("memberData", JSON.stringify(memberData));
+              setProfile(loadProfileFromStorage() || null);
+              setIsLoggedIn(true);
+            } else {
+              // No profile found — sign out
+              await supabase.auth.signOut();
+              setIsLoggedIn(false);
+            }
+          }
+        } else {
+          // No active session
+          localStorage.removeItem("memberSession");
+          localStorage.removeItem("memberData");
+          setIsLoggedIn(false);
+        }
+      } catch {
+        setIsLoggedIn(false);
+      } finally {
+        setSessionChecked(true);
+      }
+    }
+
+    restoreSession();
+
+    // Listen for auth state changes (e.g. token refresh, sign out)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_IN" && session) {
+        localStorage.setItem("memberSession", JSON.stringify(session));
+        const storedProfile = loadProfileFromStorage();
+        if (storedProfile) {
+          setProfile(storedProfile);
+          setIsLoggedIn(true);
+        }
+      } else if (event === "SIGNED_OUT") {
+        localStorage.removeItem("memberSession");
+        localStorage.removeItem("memberData");
+        setIsLoggedIn(false);
+        setProfile(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Persist notifications
+  useEffect(() => {
+    localStorage.setItem(LS_NOTIF_KEY, JSON.stringify(notifications));
+  }, [notifications]);
 
   // Toast helper
   const showToast = useCallback((msg, type = "success") => {
@@ -88,44 +143,74 @@ export function GuestAuthProvider({ children }) {
   }, []);
 
   const activeNotifications = notifications.filter(n => {
-    if (profile.isPremium) return true;
+    const isPlatinum = profile?.membership === "Platinum";
+    const isGold = profile?.membership === "Gold";
+    if (isPlatinum || isGold) return true;
     return ["Reservasi", "Keluhan", "Layanan"].includes(n.tipe);
   });
 
   const unreadCount = activeNotifications.filter(n => !n.dibaca).length;
 
-  // Auth actions
-  const login = useCallback((email, password) => {
-    // Simulasi validasi
-    if (!email || !password) return { ok: false, error: "Email dan kata sandi wajib diisi." };
-    if (password.length < 6) return { ok: false, error: "Kata sandi minimal 6 karakter." };
-    setIsLoggedIn(true);
-    return { ok: true };
+  // ── Auth actions ──────────────────────────────────────────────────────────
+
+  /**
+   * login() — kept for API compatibility but no longer used by GuestLogin.
+   * GuestLogin now calls Supabase directly and updates localStorage.
+   * This function rehydrates state from localStorage after login.
+   */
+  const login = useCallback(() => {
+    const storedProfile = loadProfileFromStorage();
+    if (storedProfile) {
+      setProfile(storedProfile);
+      setIsLoggedIn(true);
+      return { ok: true };
+    }
+    return { ok: false, error: "Profil tidak ditemukan." };
   }, []);
 
-  const register = useCallback((data) => {
-    if (!data.namaLengkap || !data.email || !data.noHp || !data.password)
-      return { ok: false, error: "Semua field wajib diisi." };
-    if (data.password !== data.konfirmasiPassword)
-      return { ok: false, error: "Kata sandi dan konfirmasi tidak cocok." };
-    if (data.password.length < 6)
-      return { ok: false, error: "Kata sandi minimal 6 karakter." };
-    setProfile(prev => ({ ...prev, ...data, konfirmasiPassword: undefined }));
-    setIsLoggedIn(true);
-    return { ok: true };
+  /**
+   * register() — kept for API compatibility, no longer used by GuestRegister.
+   */
+  const register = useCallback(() => {
+    return { ok: false, error: "Gunakan halaman registrasi resmi." };
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch { /* ignore */ }
+    localStorage.removeItem("memberSession");
+    localStorage.removeItem("memberData");
     setIsLoggedIn(false);
+    setProfile(null);
   }, []);
 
-  const updateProfile = useCallback((data) => {
+  const updateProfile = useCallback(async (data) => {
+    // Update in DB
+    const currentData = profile?._raw;
+    if (currentData?.id) {
+      const { error } = await supabase
+        .from("members")
+        .update({
+          full_name: data.namaLengkap || currentData.full_name,
+          phone_number: data.noHp || currentData.phone_number,
+          address: data.alamat || currentData.address,
+          avatar_url: data.foto || currentData.avatar_url,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", currentData.id);
+
+      if (!error) {
+        const updated = { ...currentData, full_name: data.namaLengkap || currentData.full_name, phone_number: data.noHp || currentData.phone_number, address: data.alamat || currentData.address, avatar_url: data.foto || currentData.avatar_url };
+        localStorage.setItem("memberData", JSON.stringify(updated));
+      }
+    }
     setProfile(prev => ({ ...prev, ...data }));
     showToast("Profil berhasil diperbarui!");
-  }, [showToast]);
+  }, [profile, showToast]);
 
   const updatePreferensi = useCallback((pref) => {
-    setProfile(prev => ({ ...prev, preferensi: { ...prev.preferensi, ...pref } }));
+    setProfile(prev => ({ ...prev, preferensi: { ...prev?.preferensi, ...pref } }));
     showToast("Preferensi kamar disimpan!");
   }, [showToast]);
 
@@ -142,17 +227,26 @@ export function GuestAuthProvider({ children }) {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, dibaca: true } : n));
   }, []);
 
-  // Check premium status
   const checkIsPremium = useCallback(() => {
     if (!profile?.isPremium) return false;
     if (profile.premiumExpiry) {
-      // Simulate checking against current date (June 14, 2026)
-      const current = new Date("2026-06-14");
       const expiry = new Date(profile.premiumExpiry);
-      if (expiry < current) return false;
+      if (expiry < new Date()) return false;
     }
     return true;
   }, [profile]);
+
+  // Don't render children until session check is complete (avoids flash of login redirect)
+  if (!sessionChecked) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "#FDF8F2" }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ width: "36px", height: "36px", border: "3px solid #E8DCC8", borderTopColor: "#1E3A5F", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto" }} />
+          <style>{`@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }`}</style>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <GuestAuthContext.Provider value={{

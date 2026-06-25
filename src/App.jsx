@@ -7,15 +7,19 @@ import "./assets/tailwind.css";
 // Komponen Loading Global
 import Loading from "./components/Loading";
 
+// Protected Route Guards
+import ProtectedRoute from "./components/ProtectedRoute";
+import AdminProtectedRoute from "./components/AdminProtectedRoute";
+
 // Lazy Loading untuk Optimasi Performa
 const MainLayouts = lazy(() => import("./layouts/MainLayouts"));
 const AuthLayout = lazy(() => import("./layouts/AuthLayouts"));
 const GuestAuthLayout = lazy(() => import("./layouts/GuestAuthLayout"));
 const GuestLayout = lazy(() => import("./layouts/GuestLayout"));
 
-// Pages - Management System
+// Pages - Management System (Admin)
 const Dashboard = lazy(() => import("./pages/Dashboard"));
-const Reservations = lazy(() => import("./pages/reservations")); // Sesuaikan huruf kapital sesuai folder
+const Reservations = lazy(() => import("./pages/reservations"));
 const Guest = lazy(() => import("./pages/guest"));
 const Rooms = lazy(() => import("./pages/rooms"));
 const Details = lazy(() => import("./pages/Details"));
@@ -29,15 +33,20 @@ const Marketing = lazy(() => import("./pages/marketing"));
 const Feedback = lazy(() => import("./pages/feedback"));
 const Tasks = lazy(() => import("./pages/tasks"));
 
-// Pages - Authentication
+// Pages - Admin Members CRUD
+const AdminMembers = lazy(() => import("./pages/admin/Members"));
+
+// Pages - Authentication (Admin)
 const Login = lazy(() => import("./pages/Auth/Login"));
 const Register = lazy(() => import("./pages/Auth/Register"));
 const Forgot = lazy(() => import("./pages/Auth/Forgot"));
 
-// Pages - Guest Portal
+// Pages - Guest Portal Auth
 const GuestLogin = lazy(() => import("./pages/guest/GuestLogin"));
 const GuestRegister = lazy(() => import("./pages/guest/GuestRegister"));
 const GuestForgot = lazy(() => import("./pages/guest/GuestForgot"));
+
+// Pages - Guest Portal App
 const GuestDashboard = lazy(() => import("./pages/guest/GuestDashboard"));
 const GuestProfile = lazy(() => import("./pages/guest/GuestProfile"));
 const GuestHomepage = lazy(() => import("./pages/guest/GuestHomepage"));
@@ -70,12 +79,12 @@ const NotFound = lazy(() => import("./components/NotFound"));
 function App() {
     const location = useLocation();
 
-    // Daftar route yang valid agar sistem bisa menentukan kapan menampilkan NotFound
+    // Daftar route yang valid
     const validRoutes = [
-        "/", 
-        "/reservations", 
-        "/guests", 
-        "/rooms", 
+        "/",
+        "/reservations",
+        "/guests",
+        "/rooms",
         "/details",
         "/components",
         "/reports",
@@ -86,18 +95,21 @@ function App() {
         "/marketing",
         "/feedback",
         "/tasks",
-        "/login", 
-        "/register", 
-        "/forgot"
+        "/login",
+        "/register",
+        "/forgot",
+        "/forgot-password",
+        "/admin/dashboard",
+        "/admin/members",
+        "/dashboard",
     ];
-    
+
     const isErrorPage = !validRoutes.includes(location.pathname)
         && !location.pathname.startsWith("/guest/")
         && location.pathname !== "/beranda";
 
     // Tampilkan NotFound jika URL tidak dikenal
     if (isErrorPage) {
-        // Fallback untuk route guest yang tidak ditemukan
         if (location.pathname.startsWith("/guest")) {
             return (
                 <Suspense fallback={<Loading />}>
@@ -115,9 +127,23 @@ function App() {
     return (
         <Suspense fallback={<Loading />}>
             <Routes>
-                {/* --- GRUP LAYOUT UTAMA (Dengan Sidebar & Header Hotel) --- */}
-                <Route element={<MainLayouts />}>
+                {/* ─── ADMIN AUTH (Login / Register / Forgot) ─────────────────── */}
+                <Route element={<AuthLayout />}>
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/register" element={<Register />} />
+                    <Route path="/forgot" element={<Forgot />} />
+                    <Route path="/forgot-password" element={<Forgot />} />
+                </Route>
+
+                {/* ─── ADMIN DASHBOARD (Protected) ────────────────────────────── */}
+                <Route element={
+                    <AdminProtectedRoute>
+                        <MainLayouts />
+                    </AdminProtectedRoute>
+                }>
                     <Route path="/" element={<Dashboard />} />
+                    <Route path="/admin/dashboard" element={<Dashboard />} />
+                    <Route path="/admin/members" element={<AdminMembers />} />
                     <Route path="/reservations" element={<Reservations />} />
                     <Route path="/guests" element={<Guest />} />
                     <Route path="/rooms" element={<Rooms />} />
@@ -133,21 +159,15 @@ function App() {
                     <Route path="/tasks" element={<Tasks />} />
                 </Route>
 
-                {/* --- GRUP LAYOUT AUTH (Halaman Login/Register Tanpa Sidebar) --- */}
-                <Route element={<AuthLayout />}>
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/register" element={<Register />} />
-                    <Route path="/forgot" element={<Forgot />} />
-                </Route>
-
-                {/* --- GUEST PORTAL AUTH (Halaman Login/Register Tamu) --- */}
+                {/* ─── GUEST AUTH (Login / Register / Forgot) ─────────────────── */}
                 <Route element={<GuestAuthLayout />}>
                     <Route path="/guest/login" element={<GuestLogin />} />
                     <Route path="/guest/register" element={<GuestRegister />} />
                     <Route path="/guest/lupa-password" element={<GuestForgot />} />
+                    <Route path="/guest/forgot-password" element={<GuestForgot />} />
                 </Route>
 
-                {/* --- BERANDA PUBLIK TAMU (Tanpa Auth, Layout Mandiri) --- */}
+                {/* ─── BERANDA PUBLIK TAMU (Tanpa Auth) ───────────────────────── */}
                 <Route path="/beranda" element={<GuestHomepage />} />
                 <Route path="/guest/beranda" element={<GuestHomepage />} />
                 <Route path="/guest" element={<GuestHomepage />} />
@@ -155,8 +175,13 @@ function App() {
                 <Route path="/guest/booking/:roomId" element={<GuestBooking />} />
                 <Route path="/guest/booking" element={<GuestHomepage />} />
 
-                {/* --- GUEST PORTAL APP (Halaman Tamu Terautentikasi) --- */}
-                <Route element={<GuestLayout />}>
+                {/* ─── GUEST PORTAL APP (Protected) ───────────────────────────── */}
+                <Route element={
+                    <ProtectedRoute>
+                        <GuestLayout />
+                    </ProtectedRoute>
+                }>
+                    <Route path="/dashboard" element={<GuestDashboard />} />
                     <Route path="/guest/dashboard" element={<GuestDashboard />} />
                     <Route path="/guest/profil" element={<GuestProfile />} />
                     <Route path="/guest/reservasi" element={<GuestReservations />} />

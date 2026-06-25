@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { FaEnvelope, FaArrowLeft, FaPaperPlane } from "react-icons/fa";
 import { ImSpinner2 } from "react-icons/im";
+import { supabase } from "../../lib/supabase";
 
 export default function GuestForgot() {
   const [email, setEmail] = useState("");
@@ -15,15 +16,32 @@ export default function GuestForgot() {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError("Format email tidak valid"); return; }
     setError("");
     setLoading(true);
-    await new Promise(r => setTimeout(r, 1500));
-    setLoading(false);
-    setSent(true);
+
+    try {
+      // Use Supabase Auth to send password reset email
+      // We do not reveal whether the email is registered or not on error
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (resetError) {
+        // Still show success to not reveal if email is registered
+        console.error("Reset error:", resetError.message);
+      }
+
+      // Always show success to avoid exposing registered emails
+      setSent(true);
+    } catch (err) {
+      setError("Terjadi kesalahan. Silakan coba lagi.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
     <div>
       <div style={{ backgroundColor: "#FFFFFF", borderRadius: "20px", padding: "40px 32px", boxShadow: "0 4px 32px rgba(30,58,95,0.08)", border: "1px solid #F0EAE0", textAlign: "center" }}>
-        
+
         {!sent ? (
           <>
             {/* Icon */}
@@ -39,14 +57,22 @@ export default function GuestForgot() {
               <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#1E3A5F", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Alamat Email</label>
               <div style={{ position: "relative", marginBottom: "6px" }}>
                 <FaEnvelope style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#94A3B8" }} />
-                <input type="email" placeholder="email@contoh.com" value={email}
+                <input
+                  type="email"
+                  placeholder="email@contoh.com"
+                  value={email}
                   onChange={e => { setEmail(e.target.value); setError(""); }}
-                  style={{ width: "100%", padding: "12px 14px 12px 38px", borderRadius: "10px", border: `1.5px solid ${error ? "#EF4444" : "#E8DCC8"}`, backgroundColor: "#FAFAFA", color: "#1A1A2E", fontSize: "0.88rem", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }} />
+                  disabled={loading}
+                  style={{ width: "100%", padding: "12px 14px 12px 38px", borderRadius: "10px", border: `1.5px solid ${error ? "#EF4444" : "#E8DCC8"}`, backgroundColor: "#FAFAFA", color: "#1A1A2E", fontSize: "0.88rem", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
+                />
               </div>
               {error && <p style={{ margin: "0 0 16px", fontSize: "0.75rem", color: "#EF4444" }}>{error}</p>}
 
-              <button type="submit" disabled={loading}
-                style={{ width: "100%", padding: "14px", borderRadius: "12px", border: "none", background: "linear-gradient(135deg, #1E3A5F, #2E5490)", color: "#fff", fontWeight: 800, fontSize: "0.95rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", fontFamily: "inherit", marginTop: "12px" }}>
+              <button
+                type="submit"
+                disabled={loading}
+                style={{ width: "100%", padding: "14px", borderRadius: "12px", border: "none", background: "linear-gradient(135deg, #1E3A5F, #2E5490)", color: "#fff", fontWeight: 800, fontSize: "0.95rem", cursor: loading ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", fontFamily: "inherit", marginTop: "12px", opacity: loading ? 0.8 : 1 }}
+              >
                 {loading ? <ImSpinner2 style={{ animation: "spin 1s linear infinite" }} /> : <><FaPaperPlane /><span>Kirim Link Reset</span></>}
               </button>
             </form>
@@ -59,7 +85,7 @@ export default function GuestForgot() {
             </div>
             <h2 style={{ fontSize: "1.5rem", fontWeight: 800, color: "#1E3A5F", margin: "0 0 8px" }}>Email Terkirim!</h2>
             <p style={{ fontSize: "0.88rem", color: "#6B7280", lineHeight: 1.7, margin: "0 0 12px" }}>
-              Link reset kata sandi telah dikirim ke
+              Jika email Anda terdaftar, link reset kata sandi telah dikirim ke
             </p>
             <div style={{ backgroundColor: "#F5EDD8", borderRadius: "10px", padding: "10px 16px", display: "inline-block", marginBottom: "24px" }}>
               <span style={{ fontWeight: 700, color: "#1E3A5F", fontSize: "0.9rem" }}>{email}</span>
