@@ -163,7 +163,7 @@ export default function GuestRegister() {
     setErrors({});
 
     try {
-      // 1. Membuat akun pada Supabase Authentication
+      // 1. Membuat akun pada Supabase Authentication dengan metadata nama dan no hp
       const { data: authData, error: authError } =
         await supabase.auth.signUp({
           email: form.email.trim(),
@@ -171,6 +171,7 @@ export default function GuestRegister() {
           options: {
             data: {
               full_name: form.namaLengkap.trim(),
+              phone: form.noHp.trim(),
             },
           },
         });
@@ -194,35 +195,7 @@ export default function GuestRegister() {
         throw new Error("Gagal membuat akun. User tidak ditemukan.");
       }
 
-      // Jika Email Confirmation aktif, session bisa null.
-      // Tetapi user_id tetap tersedia dari authData.user.id.
-      const memberPayload = {
-        user_id: authData.user.id,
-        full_name: form.namaLengkap.trim(),
-        phone_number: form.noHp.trim(),
-        address: form.address.trim(),
-        avatar_url: null,
-        membership_type: "Regular",
-        joined_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-
-      // 2. Simpan profil tambahan ke tabel members
-      const { data: memberData, error: memberError } = await supabase
-        .from("members")
-        .insert([memberPayload])
-        .select()
-        .single();
-
-      if (memberError) {
-        console.error("DETAIL ERROR INSERT MEMBERS:", memberError);
-
-        throw new Error(
-          `Gagal menyimpan profil: ${memberError.message}`
-        );
-      }
-
-      console.log("Member berhasil dibuat:", memberData);
+      console.log("User berhasil dibuat:", authData.user);
 
       // 3. Logout agar user login manual setelah register
       await supabase.auth.signOut();

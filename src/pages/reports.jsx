@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { 
   FaFileDownload, 
   FaFilter, 
@@ -11,11 +11,7 @@ import {
   FaUsers,
   FaFileCsv
 } from "react-icons/fa";
-
-// Import data asli
-import { reservations } from "../data/reservations";
-import { rooms } from "../data/rooms";
-import { guests } from "../data/guest";
+import { supabase } from "../lib/supabase";
 
 // Helper untuk parsing tanggal non-zero-padded (contoh: "2026-05-5" -> 5 Mei 2026)
 const parseDateString = (dateStr) => {
@@ -45,10 +41,44 @@ export default function Reports() {
   const [trendToggle, setTrendToggle] = useState("mingguan"); // "mingguan" atau "bulanan"
   const [hoveredPoint, setHoveredPoint] = useState(null);
 
-  // Memuat data reservasi dari localStorage (atau fallback ke data mock)
-  const activeReservations = useMemo(() => {
-    const saved = localStorage.getItem("hotelify_reservations");
-    return saved ? JSON.parse(saved) : reservations;
+  // Memuat data reservasi dari Supabase
+  const [activeReservations, setActiveReservations] = useState([]);
+  const [roomsData, setRoomsData] = useState([]);
+  const [guestsData, setGuestsData] = useState([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const { data: resData, error: resError } = await supabase
+          .from("reservations")
+          .select("*, profiles(full_name), rooms(room_number, room_type)");
+        if (resError) throw resError;
+
+        const { data: rmData, error: rmError } = await supabase.from("rooms").select("*");
+        if (rmError) throw rmError;
+
+        const { data: profData, error: profError } = await supabase.from("profiles").select("*");
+        if (profError) throw profError;
+
+        setRoomsData(rmData || []);
+        setGuestsData(profData || []);
+
+        const mapped = (resData || []).map(r => ({
+          bookingId: r.id,
+          guestName: r.profiles?.full_name || "Unknown",
+          roomNumber: r.rooms?.room_number || "-",
+          roomType: r.rooms?.room_type || "-",
+          checkIn: r.check_in,
+          checkOut: r.check_out,
+          status: r.status, // might be 'pending', 'confirmed', 'checked_in', 'checked_out', 'cancelled'
+          totalPayment: r.total_price || 0
+        }));
+        setActiveReservations(mapped);
+      } catch (err) {
+        console.error("Gagal memuat data laporan:", err);
+      }
+    };
+    fetchData();
   }, []);
 
   // Daftar unik tipe kamar dari data reservasi untuk opsi filter
@@ -100,7 +130,7 @@ export default function Reports() {
 
     // Rata-rata Tingkat Hunian (Occupancy Rate)
     // Rumus: (Total malam terisi / (Total kamar * rentang hari)) * 100
-    const totalRooms = rooms.length || 20; // Default 20
+    const totalRoomsCount = roomsData.length || 20; // Default 20
     const startRange = new Date(startDate);
     const endRange = new Date(endDate);
     const diffTimeRange = Math.abs(endRange - startRange);
@@ -183,11 +213,11 @@ export default function Reports() {
     let newCount = 0;
 
     filteredReservations.forEach(res => {
-      // Cari data tamu di database tamu
-      const guestObj = guests.find(g => g.guestName === res.guestName);
+      // Cari data tamu di database tamu (profiles)
+      const guestObj = guestsData.find(g => g.full_name === res.guestName);
       if (guestObj) {
-        // Jika stays > 3 atau membership bukan Basic, golongkan returning
-        if (guestObj.totalStay > 3 || guestObj.membership !== 'Basic') {
+        // Jika point > 500 (misal tier Gold), golongkan returning
+        if (guestObj.total_points > 500) {
           returningCount++;
         } else {
           newCount++;

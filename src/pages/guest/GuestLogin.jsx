@@ -73,9 +73,9 @@ export default function GuestLogin() {
 
       // Fetch member profile
       const { data: memberData, error: memberError } = await supabase
-        .from("members")
-        .select("*")
-        .eq("user_id", data.user.id)
+        .from("profiles")
+        .select("*, member_tiers(*)")
+        .eq("id", data.user.id)
         .single();
 
       if (memberError || !memberData) {

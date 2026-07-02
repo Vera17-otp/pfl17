@@ -18,9 +18,9 @@ import {
   FaRedoAlt 
 } from 'react-icons/fa';
 
-// Fallback data
 import { reservations } from '../data/reservations';
 import { guests } from '../data/guest';
+import { supabase } from '../lib/supabase';
 
 // Indonesian constants
 const INDONESIAN_MONTHS = [
@@ -281,38 +281,54 @@ export default function Marketing() {
   // 6. EVENT HANDLERS
 
   // Tambah Kampanye Baru
-  const handleCreateCampaign = (e) => {
+  const handleCreateCampaign = async (e) => {
     e.preventDefault();
     if (!newCampaignName || !newMessage) {
       triggerToast("Nama kampanye dan isi pesan wajib diisi!");
       return;
     }
 
-    const newCampaign = {
-      id: `CMP-${8000 + campaignsList.length + 1}`,
-      name: newCampaignName,
-      targetSegment: newTargetSegment,
-      channel: newChannel,
-      startDate: newStartDate,
-      endDate: newEndDate,
-      message: newMessage,
-      voucher: newVoucher || "TIDAK ADA",
-      sentCount: 0,
-      bookingsCount: 0,
-      revenue: 0,
-      status: "Aktif"
-    };
+    try {
+      if (newVoucher && newVoucher !== "TIDAK ADA") {
+        const { error } = await supabase
+          .from("marketing_promos")
+          .insert([{
+            code: newVoucher.trim().toUpperCase(),
+            discount_percentage: 15,
+            valid_until: newEndDate,
+            description: newCampaignName
+          }]);
+        if (error) console.error("Gagal insert promo ke Supabase:", error);
+      }
 
-    const updated = [newCampaign, ...campaignsList];
-    setCampaignsList(updated);
-    localStorage.setItem("hotelify_campaigns", JSON.stringify(updated));
-    setShowAddModal(false);
-    
-    // Reset Form
-    setNewCampaignName("");
-    setNewVoucher("");
-    setNewMessage("");
-    triggerToast(`Kampanye "${newCampaignName}" berhasil dijadwalkan!`);
+      const newCampaign = {
+        id: `CMP-${8000 + campaignsList.length + 1}`,
+        name: newCampaignName,
+        targetSegment: newTargetSegment,
+        channel: newChannel,
+        startDate: newStartDate,
+        endDate: newEndDate,
+        message: newMessage,
+        voucher: newVoucher || "TIDAK ADA",
+        sentCount: 0,
+        bookingsCount: 0,
+        revenue: 0,
+        status: "Aktif"
+      };
+
+      const updated = [newCampaign, ...campaignsList];
+      setCampaignsList(updated);
+      localStorage.setItem("hotelify_campaigns", JSON.stringify(updated));
+      setShowAddModal(false);
+      
+      // Reset Form
+      setNewCampaignName("");
+      setNewVoucher("");
+      setNewMessage("");
+      triggerToast(`Kampanye "${newCampaignName}" berhasil dijadwalkan!`);
+    } catch (err) {
+      console.error("Gagal membuat kampanye:", err);
+    }
   };
 
   // Kirim pemicu otomatis (Simulasi pengiriman pesan marketing)

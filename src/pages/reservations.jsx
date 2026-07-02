@@ -28,6 +28,8 @@ import {
   FaBroom
 } from "react-icons/fa";
 
+import { supabase } from "../lib/supabase";
+
 // Import data asli
 import { reservations } from "../data/reservations";
 import { rooms } from "../data/rooms";
@@ -53,26 +55,18 @@ const getStayNights = (inStr, outStr) => {
   return Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
 };
 
-// Helper update status kamar di localStorage
-const updateRoomStatusInStorage = (roomNumber, nextStatus) => {
-  const savedRooms = localStorage.getItem("hotelify_rooms");
-  let list = [];
-  if (savedRooms) {
-    try {
-      list = JSON.parse(savedRooms);
-    } catch {
-      list = rooms;
-    }
-  } else {
-    list = rooms;
+// Helper update status kamar di DB Supabase
+const updateRoomStatusInDB = async (roomNumber, nextStatus) => {
+  const dbStatus = nextStatus.toLowerCase();
+  try {
+    const { error } = await supabase
+      .from("rooms")
+      .update({ status: dbStatus })
+      .eq("room_number", roomNumber);
+    if (error) throw error;
+  } catch (err) {
+    console.error("Gagal update status kamar:", err);
   }
-  const updatedRooms = list.map(rm => {
-    if (rm.roomNumber === roomNumber) {
-      return { ...rm, status: nextStatus };
-    }
-    return rm;
-  });
-  localStorage.setItem("hotelify_rooms", JSON.stringify(updatedRooms));
 };
 
 export default function Reservations() {
@@ -92,61 +86,12 @@ export default function Reservations() {
   // Hari ini dalam simulasi sistem hotel
   const todayStr = "2026-06-14";
 
-  // Inisialisasi daftar reservasi terintegrasi & dimodifikasi agar data terisi hari ini (2026-06-14)
-  const [resList, setResList] = useState(() => {
-    const saved = localStorage.getItem("hotelify_reservations");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error("Gagal memuat reservasi dari localStorage", e);
-      }
-    }
-    return reservations.map((r, idx) => {
-      // Petakan data tipe kamar agar selaras dengan rooms.js (Single, Double, Deluxe, Suite)
-      let standardType = "Deluxe";
-      if (r.roomType.includes("Single")) standardType = "Single";
-      else if (r.roomType.includes("Suite")) standardType = "Suite";
-      else if (r.roomType.includes("Double")) standardType = "Double";
+  // 1. STATE UTAMA (Supabase Integration)
+  const [resList, setResList] = useState([]);
+  const [roomsList, setRoomsList] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-      // Modifikasi data secara organik agar ada tamu check-in dan check-out hari ini
-      let checkIn = r.checkIn;
-      let checkOut = r.checkOut;
-      let status = r.status === "Check-in" ? "Check-in" : r.status === "Booked" ? "Menunggu Konfirmasi" : r.status === "Check-out" ? "Check-out" : "Dibatalkan";
-      let additionalServiceFee = 0;
-
-      if (idx % 5 === 0) {
-        // Tamu dijadwalkan Check-in Hari Ini
-        checkIn = todayStr;
-        checkOut = "2026-06-17"; // 3 malam
-        status = idx % 2 === 0 ? "Dikonfirmasi" : "Menunggu Konfirmasi";
-      } else if (idx % 5 === 1) {
-        // Tamu dijadwalkan Check-out Hari Ini
-        checkIn = "2026-06-12";
-        checkOut = todayStr; // Check-out hari ini
-        status = "Check-in"; // Sedang menginap
-        additionalServiceFee = 120000 + (idx * 15000); // Simulasi biaya tambahan minibar & laundry
-      }
-
-      return {
-        ...r,
-        roomType: standardType,
-        identityNumber: `327305140689000${idx + 1}`.substring(0, 16),
-        phone: `0812-9876-543${idx}`,
-        email: `${r.guestName.toLowerCase().replace(/\s+/g, '')}@example.com`,
-        adults: 2,
-        children: idx % 3 === 0 ? 1 : 0,
-        specialRequest: idx % 5 === 0 ? "Minta kamar bebas asap rokok dan bantal tambahan." : "",
-        bookingSource: ["Website", "Telepon", "Walk-in", "OTA"][idx % 4],
-        status,
-        checkIn,
-        checkOut,
-        additionalServiceFee
-      };
-    });
-  });
-
-  // State Riwayat Status (Lini Masa Audit Trail)
+  // State Riwayat Status (Lini Masa Audit Trail) - local storage fallback
   const [statusHistory, setStatusHistory] = useState(() => {
     const saved = localStorage.getItem("hotelify_status_history");
     if (saved) {
@@ -156,18 +101,10 @@ export default function Reservations() {
         console.error("Gagal memuat status history", e);
       }
     }
-    const historyMap = {};
-    resList.forEach((r) => {
-      const bId = r.bookingId;
-      historyMap[bId] = [
-        { status: "Pengajuan Reservasi", time: "12 Jun 2026, 09:30 WIB", note: `Pemesanan diajukan via ${r.bookingSource}` },
-        { status: r.status, time: "13 Jun 2026, 14:15 WIB", note: `Status awal sistem diset ke ${r.status}` }
-      ];
-    });
-    return historyMap;
+    return {};
   });
 
-  // Pelacakan Data Deposit Check-in
+  // Pelacakan Data Deposit Check-in - local storage fallback
   const [depositRecords, setDepositRecords] = useState(() => {
     const saved = localStorage.getItem("hotelify_deposit_records");
     if (saved) {
@@ -180,10 +117,69 @@ export default function Reservations() {
     return {};
   });
 
-  // Persist to localStorage
+  const fetchData = async () => {
+    try {
+      // 1. Fetch Rooms
+      const { data: dbRooms, error: roomsError } = await supabase
+        .from("rooms")
+        .select("*");
+      if (roomsError) throw roomsError;
+      
+      const formattedRooms = dbRooms.map(rm => ({
+        roomId: rm.id,
+        roomNumber: rm.room_number,
+        type: rm.room_type,
+        price: Number(rm.price_per_night),
+        capacity: rm.capacity,
+        status: rm.status.charAt(0).toUpperCase() + rm.status.slice(1),
+        description: rm.description,
+        floor: rm.floor,
+        facilities: rm.facilities || [],
+        image: rm.image
+      }));
+      setRoomsList(formattedRooms);
+
+      // 2. Fetch Reservations
+      const { data: dbRes, error: resError } = await supabase
+        .from("reservations")
+        .select("*, profiles(*), rooms(*)");
+      if (resError) throw resError;
+
+      const formattedRes = dbRes.map(res => {
+        let statusLabel = "Menunggu Konfirmasi";
+        if (res.status === "confirmed") statusLabel = "Dikonfirmasi";
+        else if (res.status === "checked_in") statusLabel = "Check-in";
+        else if (res.status === "checked_out") statusLabel = "Check-out";
+        else if (res.status === "cancelled") statusLabel = "Dibatalkan";
+
+        return {
+          bookingId: res.id,
+          guestId: res.guest_id,
+          guestName: res.profiles?.full_name || "Tamu",
+          phone: res.profiles?.phone || "",
+          email: res.profiles?.email || "",
+          roomNumber: res.rooms?.room_number || "",
+          roomType: res.rooms?.room_type || "",
+          checkIn: res.check_in,
+          checkOut: res.check_out,
+          status: statusLabel,
+          totalPayment: Number(res.total_price),
+          pointsEarned: res.points_earned,
+          additionalServiceFee: 0
+        };
+      });
+
+      setResList(formattedRes);
+    } catch (err) {
+      console.error("Error fetching reservation data:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    localStorage.setItem("hotelify_reservations", JSON.stringify(resList));
-  }, [resList]);
+    fetchData();
+  }, []);
 
   useEffect(() => {
     localStorage.setItem("hotelify_status_history", JSON.stringify(statusHistory));
@@ -247,7 +243,7 @@ export default function Reservations() {
   // 3. CEK KETERSEDIAAN KAMAR (FORMULIR BARU)
   const availableRoomsForForm = useMemo(() => {
     if (!formRoomType) return [];
-    const matchingRooms = rooms.filter(room => room.type.toLowerCase() === formRoomType.toLowerCase());
+    const matchingRooms = roomsList.filter(room => room.type.toLowerCase() === formRoomType.toLowerCase());
     const occupiedRoomNumbers = resList
       .filter(res => {
         if (res.status === "Dibatalkan" || res.status === "Check-out") return false;
@@ -260,7 +256,7 @@ export default function Reservations() {
       .map(res => res.roomNumber);
 
     return matchingRooms.filter(r => !occupiedRoomNumbers.includes(r.roomNumber));
-  }, [formRoomType, formCheckIn, formCheckOut, resList]);
+  }, [formRoomType, formCheckIn, formCheckOut, resList, roomsList]);
 
   // Kalkulasi harga kamar formulir
   const stayNightsInForm = useMemo(() => {
@@ -268,9 +264,9 @@ export default function Reservations() {
   }, [formCheckIn, formCheckOut]);
 
   const selectedRoomPrice = useMemo(() => {
-    const room = rooms.find(r => r.roomNumber === formRoomNumber);
+    const room = roomsList.find(r => r.roomNumber === formRoomNumber);
     return room ? room.price : 0;
-  }, [formRoomNumber]);
+  }, [formRoomNumber, roomsList]);
 
   const totalCostInForm = useMemo(() => {
     return selectedRoomPrice * stayNightsInForm;
@@ -321,7 +317,7 @@ export default function Reservations() {
   // Kamar alternatif untuk pemindahan kamar
   const availableRoomsForChanger = useMemo(() => {
     if (!activeReservation) return [];
-    const matchingRooms = rooms.filter(room => room.type.toLowerCase() === activeReservation.roomType.toLowerCase());
+    const matchingRooms = roomsList.filter(room => room.type.toLowerCase() === activeReservation.roomType.toLowerCase());
     const occupiedRoomNumbers = resList
       .filter(res => {
         if (res.bookingId === activeReservation.bookingId) return false;
@@ -335,240 +331,256 @@ export default function Reservations() {
       .map(res => res.roomNumber);
 
     return matchingRooms.filter(r => !occupiedRoomNumbers.includes(r.roomNumber));
-  }, [activeReservation, resList]);
+  }, [activeReservation, resList, roomsList]);
+
+  // 6. EVENT HANDLERS (SUBMIT, STATUS UPDATES, PROCESS CHECK-IN / CHECK-OUT)
 
   // 6. EVENT HANDLERS (SUBMIT, STATUS UPDATES, PROCESS CHECK-IN / CHECK-OUT)
 
   // Buat Reservasi Baru
-  const handleSaveReservation = (e) => {
+  const handleSaveReservation = async (e) => {
     e.preventDefault();
     if (!formName || !formRoomNumber || !formIdentity) {
       alert("Harap lengkapi semua kolom wajib!");
       return;
     }
 
-    const randomCode = Math.random().toString(36).substring(2, 6).toUpperCase();
-    const newBookingId = `HTL-20260614-${randomCode}`;
+    setLoading(true);
 
-    const newRes = {
-      bookingId: newBookingId,
-      guestName: formName,
-      identityNumber: formIdentity,
-      phone: formPhone,
-      email: formEmail,
-      roomType: formRoomType,
-      roomNumber: formRoomNumber,
-      checkIn: formCheckIn,
-      checkOut: formCheckOut,
-      adults: parseInt(formAdults, 10),
-      children: parseInt(formChildren, 10),
-      specialRequest: formRequest,
-      bookingSource: formSource,
-      totalPayment: totalCostInForm,
-      status: "Menunggu Konfirmasi",
-      additionalServiceFee: 0
-    };
+    try {
+      // Find or create profile
+      const { data: existingProfile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("email", formEmail.trim())
+        .maybeSingle();
 
-    setResList(prev => [newRes, ...prev]);
-    setStatusHistory(prev => ({
-      ...prev,
-      [newBookingId]: [
-        { 
-          status: "Pengajuan Reservasi", 
-          time: "14 Jun 2026, " + new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + " WIB", 
-          note: `Reservasi diajukan via ${formSource} (Kamar ${formRoomNumber})` 
-        }
-      ]
-    }));
+      let guestId;
+      if (existingProfile) {
+        guestId = existingProfile.id;
+      } else {
+        const tempPassword = "HotelQuTempPass123!";
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: formEmail.trim(),
+          password: tempPassword,
+          options: {
+            data: {
+              full_name: formName.trim(),
+              phone: formPhone.trim(),
+            }
+          }
+        });
+        if (signUpError) throw signUpError;
+        guestId = signUpData.user.id;
+      }
 
-    // Reset Form
-    setFormName("");
-    setFormIdentity("");
-    setFormPhone("");
-    setFormEmail("");
-    setFormRoomNumber("");
-    setFormRequest("");
+      // Update phone number in profiles
+      await supabase
+        .from("profiles")
+        .update({ phone: formPhone.trim() })
+        .eq("id", guestId);
 
-    setViewMode("list");
-    setAlertMessage(`Reservasi Baru #${newBookingId} Berhasil Dibuat!`);
-    setTimeout(() => setAlertMessage(""), 4000);
+      // Find room id
+      const targetRoom = roomsList.find(r => r.roomNumber === formRoomNumber);
+      if (!targetRoom) {
+        alert("Kamar tidak ditemukan!");
+        setLoading(false);
+        return;
+      }
+
+      // Insert reservation
+      const { error: insertError } = await supabase
+        .from("reservations")
+        .insert([{
+          guest_id: guestId,
+          room_id: targetRoom.roomId,
+          check_in: formCheckIn,
+          check_out: formCheckOut,
+          status: "pending",
+          total_price: totalCostInForm
+        }]);
+
+      if (insertError) throw insertError;
+
+      // Fetch fresh data
+      await fetchData();
+
+      // Reset Form
+      setFormName("");
+      setFormIdentity("");
+      setFormPhone("");
+      setFormEmail("");
+      setFormRoomNumber("");
+      setFormRequest("");
+
+      setViewMode("list");
+      setAlertMessage(`Reservasi Baru Berhasil Dibuat!`);
+      setTimeout(() => setAlertMessage(""), 4000);
+    } catch (err) {
+      console.error("Gagal menyimpan reservasi:", err);
+      alert(`Gagal menyimpan reservasi: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Update Status reservasi general
-  const updateReservationStatus = (bookingId, nextStatus, logNote) => {
-    setResList(prev => prev.map(res => {
-      if (res.bookingId === bookingId) {
-        return { ...res, status: nextStatus };
+  const updateReservationStatus = async (bookingId, nextStatus, logNote) => {
+    let dbStatus = "pending";
+    if (nextStatus === "Dikonfirmasi") dbStatus = "confirmed";
+    else if (nextStatus === "Check-in") dbStatus = "checked_in";
+    else if (nextStatus === "Check-out") dbStatus = "checked_out";
+    else if (nextStatus === "Dibatalkan") dbStatus = "cancelled";
+
+    try {
+      const { error } = await supabase
+        .from("reservations")
+        .update({ status: dbStatus })
+        .eq("id", bookingId);
+      if (error) throw error;
+
+      await fetchData();
+
+      if (nextStatus === "Dikonfirmasi") {
+        const targetRes = resList.find(r => r.bookingId === bookingId);
+        setAlertMessage(`Email konfirmasi reservasi & kartu digital dikirim ke ${targetRes?.email || "tamu"}`);
+        setTimeout(() => setAlertMessage(""), 4500);
+      } else {
+        setAlertMessage(`Status reservasi #${bookingId} diubah ke ${nextStatus}`);
+        setTimeout(() => setAlertMessage(""), 3000);
       }
-      return res;
-    }));
-
-    const timeStr = "14 Jun 2026, " + new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + " WIB";
-    setStatusHistory(prev => {
-      const history = prev[bookingId] || [];
-      return {
-        ...prev,
-        [bookingId]: [
-          ...history,
-          { status: nextStatus, time: timeStr, note: logNote }
-        ]
-      };
-    });
-
-    if (nextStatus === "Dikonfirmasi") {
-      const targetRes = resList.find(r => r.bookingId === bookingId);
-      setAlertMessage(`Email konfirmasi reservasi & kartu digital dikirim ke ${targetRes?.email || "tamu"}`);
-      setTimeout(() => setAlertMessage(""), 4500);
-    } else {
-      setAlertMessage(`Status reservasi #${bookingId} diubah ke ${nextStatus}`);
-      setTimeout(() => setAlertMessage(""), 3000);
+    } catch (err) {
+      console.error("Gagal update status reservasi:", err);
+      alert(`Gagal mengubah status: ${err.message}`);
     }
   };
 
   // Pindah Kamar (Change Room)
-  const handleChangeRoomNumber = (newRoomNo) => {
+  const handleChangeRoomNumber = async (newRoomNo) => {
     if (!activeReservation) return;
     const oldRoomNo = activeReservation.roomNumber;
     
-    setResList(prev => prev.map(res => {
-      if (res.bookingId === activeReservation.bookingId) {
-        return { ...res, roomNumber: newRoomNo };
-      }
-      return res;
-    }));
+    const targetRoom = roomsList.find(r => r.roomNumber === newRoomNo);
+    if (!targetRoom) {
+      alert("Kamar baru tidak ditemukan!");
+      return;
+    }
 
-    const timeStr = "14 Jun 2026, " + new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + " WIB";
-    setStatusHistory(prev => {
-      const history = prev[activeReservation.bookingId] || [];
-      return {
-        ...prev,
-        [activeReservation.bookingId]: [
-          ...history,
-          { status: "Perubahan Kamar", time: timeStr, note: `Kamar dipindahkan dari Room ${oldRoomNo} ke Room ${newRoomNo} (Selesai)` }
-        ]
-      };
-    });
+    try {
+      const { error } = await supabase
+        .from("reservations")
+        .update({ room_id: targetRoom.roomId })
+        .eq("id", activeReservation.bookingId);
+      if (error) throw error;
 
-    // Update status kamar di localStorage
-    updateRoomStatusInStorage(oldRoomNo, "Available");
-    updateRoomStatusInStorage(newRoomNo, "Occupied");
+      // Update status kamar di DB
+      await updateRoomStatusInDB(oldRoomNo, "available");
+      await updateRoomStatusInDB(newRoomNo, "occupied");
 
-    setShowRoomChanger(false);
-    setAlertMessage(`Nomor kamar berhasil ditukar ke Room ${newRoomNo}`);
-    setTimeout(() => setAlertMessage(""), 3000);
+      await fetchData();
+
+      setShowRoomChanger(false);
+      setAlertMessage(`Nomor kamar berhasil ditukar ke Room ${newRoomNo}`);
+      setTimeout(() => setAlertMessage(""), 3000);
+    } catch (err) {
+      console.error("Error changing room number:", err);
+      alert(`Gagal menukar kamar: ${err.message}`);
+    }
   };
 
   // AKSI PROSES CHECK-IN SELESAI
-  const handleProcessCheckInSubmit = () => {
+  const handleProcessCheckInSubmit = async () => {
     if (!activeCheckInRes) return;
     
     const bId = activeCheckInRes.bookingId;
 
-    // 1. Simpan Deposit
-    setDepositRecords(prev => ({
-      ...prev,
-      [bId]: { amount: checkInDeposit, method: checkInDepositMethod }
-    }));
+    try {
+      // 1. Ubah Status Reservasi ke 'checked_in' di Supabase
+      const { error } = await supabase
+        .from("reservations")
+        .update({ status: "checked_in" })
+        .eq("id", bId);
+      if (error) throw error;
 
-    // 2. Ubah Status Reservasi ke 'Check-in'
-    setResList(prev => prev.map(res => {
-      if (res.bookingId === bId) {
-        return { ...res, status: "Check-in" };
-      }
-      return res;
-    }));
-
-    // 3. Catat audit trail
-    const timeStr = "14 Jun 2026, " + new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + " WIB";
-    setStatusHistory(prev => {
-      const history = prev[bId] || [];
-      return {
+      // 2. Simpan Deposit
+      setDepositRecords(prev => ({
         ...prev,
-        [bId]: [
-          ...history,
-          { 
-            status: "Check-in", 
-            time: timeStr, 
-            note: `Tamu check-in digital. Deposit dicatat Rp ${checkInDeposit.toLocaleString('id-ID')} (${checkInDepositMethod}). Kamar ${activeCheckInRes.roomNumber} berstatus 'Terisi'.` 
-          }
-        ]
-      };
-    });
+        [bId]: { amount: checkInDeposit, method: checkInDepositMethod }
+      }));
 
-    // 4. Buka welcome card
-    setShowWelcomeCard({
-      guestName: activeCheckInRes.guestName,
-      roomNumber: activeCheckInRes.roomNumber,
-      checkIn: activeCheckInRes.checkIn,
-      checkOut: activeCheckInRes.checkOut,
-      email: activeCheckInRes.email
-    });
+      // 3. Update status kamar di DB
+      await updateRoomStatusInDB(activeCheckInRes.roomNumber, "occupied");
 
-    // Update status kamar di localStorage
-    updateRoomStatusInStorage(activeCheckInRes.roomNumber, "Occupied");
+      await fetchData();
 
-    // Reset modal check-in & tampilkan alert status kamar
-    setActiveCheckInRes(null);
-    setAlertMessage(`Kamar ${activeCheckInRes.roomNumber} kini berstatus 'Terisi' (Occupied)`);
-    setTimeout(() => setAlertMessage(""), 3000);
+      // 4. Buka welcome card
+      setShowWelcomeCard({
+        guestName: activeCheckInRes.guestName,
+        roomNumber: activeCheckInRes.roomNumber,
+        checkIn: activeCheckInRes.checkIn,
+        checkOut: activeCheckInRes.checkOut,
+        email: activeCheckInRes.email
+      });
+
+      setActiveCheckInRes(null);
+      setAlertMessage(`Kamar ${activeCheckInRes.roomNumber} kini berstatus 'Terisi' (Occupied)`);
+      setTimeout(() => setAlertMessage(""), 3000);
+    } catch (err) {
+      console.error("Error check-in:", err);
+      alert("Gagal memproses check-in: " + err.message);
+    }
   };
 
   // AKSI PROSES CHECK-OUT SELESAI
-  const handleProcessCheckOutSubmit = () => {
+  const handleProcessCheckOutSubmit = async () => {
     if (!activeCheckOutRes) return;
 
     const bId = activeCheckOutRes.bookingId;
     const depositObj = depositRecords[bId] || { amount: 200000, method: "Tunai" };
     
-    // 1. Ubah status reservasi ke 'Check-out'
-    setResList(prev => prev.map(res => {
-      if (res.bookingId === bId) {
-        return { ...res, status: "Check-out" };
+    try {
+      // 1. Ubah status reservasi ke 'checked_out'
+      const { error } = await supabase
+        .from("reservations")
+        .update({ status: "checked_out" })
+        .eq("id", bId);
+      if (error) throw error;
+
+      // 2. Call the points & tier processing function in Supabase RPC
+      const { error: rpcError } = await supabase.rpc("fn_process_checkout", { p_reservation_id: bId });
+      if (rpcError) {
+        console.error("Error calling fn_process_checkout RPC:", rpcError);
       }
-      return res;
-    }));
 
-    // 2. Catat audit trail
-    const timeStr = "14 Jun 2026, " + new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + " WIB";
-    setStatusHistory(prev => {
-      const history = prev[bId] || [];
-      return {
-        ...prev,
-        [bId]: [
-          ...history,
-          { 
-            status: "Check-out", 
-            time: timeStr, 
-            note: `Tamu check-out digital. Pelunasan via ${checkOutPaymentMethod}. Deposit Rp ${depositObj.amount.toLocaleString('id-ID')} dikembalikan. Kamar ${activeCheckOutRes.roomNumber} dilepas.` 
-          }
-        ]
-      };
-    });
+      // 3. Update status kamar di DB ke 'dirty'
+      await updateRoomStatusInDB(activeCheckOutRes.roomNumber, "dirty");
 
-    // Update status kamar di localStorage
-    updateRoomStatusInStorage(activeCheckOutRes.roomNumber, "Dirty");
+      await fetchData();
 
-    // 3. Siapkan struk pembayaran (Receipt)
-    setShowReceipt({
-      bookingId: bId,
-      guestName: activeCheckOutRes.guestName,
-      roomNumber: activeCheckOutRes.roomNumber,
-      roomType: activeCheckOutRes.roomType,
-      checkIn: activeCheckOutRes.checkIn,
-      checkOut: activeCheckOutRes.checkOut,
-      roomFee: activeCheckOutRes.totalPayment,
-      serviceFee: activeCheckOutRes.additionalServiceFee || 145000,
-      depositRefund: depositObj.amount,
-      paymentMethod: checkOutPaymentMethod
-    });
+      // 4. Siapkan struk pembayaran (Receipt)
+      setShowReceipt({
+        bookingId: bId,
+        guestName: activeCheckOutRes.guestName,
+        roomNumber: activeCheckOutRes.roomNumber,
+        roomType: activeCheckOutRes.roomType,
+        checkIn: activeCheckOutRes.checkIn,
+        checkOut: activeCheckOutRes.checkOut,
+        roomFee: activeCheckOutRes.totalPayment,
+        serviceFee: activeCheckOutRes.additionalServiceFee || 145000,
+        depositRefund: depositObj.amount,
+        paymentMethod: checkOutPaymentMethod
+      });
 
-    // Reset modal check-out & kirim sinyal housekeeping
-    setActiveCheckOutRes(null);
-    setAlertMessage(`Kamar ${activeCheckOutRes.roomNumber} diset ke 'Perlu Dibersihkan' & dikirim ke tim Housekeeping.`);
-    setTimeout(() => setAlertMessage(""), 5000);
+      setActiveCheckOutRes(null);
+      setAlertMessage(`Kamar ${activeCheckOutRes.roomNumber} diset ke 'Perlu Dibersihkan' & dikirim ke tim Housekeeping.`);
+      setTimeout(() => setAlertMessage(""), 5000);
 
-    // Auto-buat tugas kebersihan kamar ke Housekeeping
-    createCheckoutTask(activeCheckOutRes.roomNumber, bId);
+      // Auto-buat tugas kebersihan kamar ke Housekeeping
+      createCheckoutTask(activeCheckOutRes.roomNumber, bId);
+    } catch (err) {
+      console.error("Error checkout:", err);
+      alert("Gagal memproses check-out: " + err.message);
+    }
   };
 
   const getStatusStyle = (status) => {

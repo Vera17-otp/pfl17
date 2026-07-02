@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   FaSmile, 
   FaCheckCircle, 
@@ -13,6 +13,7 @@ import {
   FaInfoCircle,
   FaArrowRight
 } from 'react-icons/fa';
+import { supabase } from '../lib/supabase';
 
 // Fallback data
 import { reservations } from '../data/reservations';
@@ -90,98 +91,44 @@ export default function Feedback() {
     return parsed;
   });
 
-  // 2. DATABASE SURVEI LOCAL STORAGE
-  const [surveysList, setSurveysList] = useState(() => {
-    const saved = localStorage.getItem("hotelify_surveys");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error("Gagal memuat survei", e);
-      }
-    }
+  // 2. DATABASE SURVEI SUPABASE
+  const [surveysList, setSurveysList] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-    // Default surveys
-    const defaults = [
-      {
-        id: "SRV-1001",
-        guestName: "Vera Zakia",
+  const fetchReviews = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("guest_reviews")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+
+      const formatted = data.map(r => ({
+        id: r.id,
+        guestName: r.guest_name,
         stayDates: "12 Jun - 14 Jun 2026",
-        roomType: "Suite",
-        cleanliness: 5,
-        staff: 5,
-        facilities: 5,
-        value: 5,
-        overall: 5.0,
-        comment: "Menginap di kamar Suite sangat memuaskan! Kamar bersih sekali, bathtub mewah, dan makanan enak.",
-        date: "2026-06-14",
-        replied: false,
-        replyText: ""
-      },
-      {
-        id: "SRV-1002",
-        guestName: "John Doe",
-        stayDates: "10 Jun - 12 Jun 2026",
         roomType: "Deluxe",
-        cleanliness: 5,
-        staff: 4,
-        facilities: 4,
-        value: 5,
-        overall: 4.5,
-        comment: "Kamar sangat bersih dan staf sangat ramah. Lokasi hotel strategis, sangat direkomendasikan!",
-        date: "2026-06-13",
-        replied: false,
-        replyText: ""
-      },
-      {
-        id: "SRV-1003",
-        guestName: "Siti Aminah",
-        stayDates: "08 Jun - 11 Jun 2026",
-        roomType: "Standard",
-        cleanliness: 2,
-        staff: 3,
-        facilities: 2,
-        value: 3,
-        overall: 2.0, // Critical Review (Red highlighted)
-        comment: "AC kamar panas dan air kamar mandi sempat macet. Harap diperbaiki kebersihan dan fasilitasnya.",
-        date: "2026-06-12",
-        replied: true,
-        replyText: "Terima kasih Ibu Siti Aminah atas masukannya. Kami segera melakukan pengecekan AC dan air di kamar terkait. Mohon maaf atas ketidaknyamanannya."
-      },
-      {
-        id: "SRV-1004",
-        guestName: "Budi Santoso",
-        stayDates: "05 Jun - 07 Jun 2026",
-        roomType: "Family",
-        cleanliness: 4,
-        staff: 5,
-        facilities: 5,
-        value: 4,
-        overall: 4.4,
-        comment: "Fasilitas kolam renang anak sangat disukai keluarga. Pelayanan staf luar biasa baik.",
-        date: "2026-06-08",
-        replied: false,
-        replyText: ""
-      },
-      {
-        id: "SRV-1005",
-        guestName: "Michael Chen",
-        stayDates: "28 Mei - 31 Mei 2026",
-        roomType: "Suite",
-        cleanliness: 3,
-        staff: 2,
-        facilities: 3,
-        value: 3,
-        overall: 2.8,
-        comment: "Staf di lobby kurang ramah saat proses check-in yang sangat padat. Kamar biasa saja.",
-        date: "2026-06-01",
-        replied: false,
-        replyText: ""
-      }
-    ];
-    localStorage.setItem("hotelify_surveys", JSON.stringify(defaults));
-    return defaults;
-  });
+        cleanliness: r.rating,
+        staff: r.rating,
+        facilities: r.rating,
+        value: r.rating,
+        overall: Number(r.rating).toFixed(1),
+        comment: r.comment,
+        date: r.created_at.substring(0, 10),
+        replied: !!r.reply_text,
+        replyText: r.reply_text || ""
+      }));
+      setSurveysList(formatted);
+    } catch (err) {
+      console.error("Gagal memuat reviews:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchReviews();
+  }, []);
 
   // 3. STATES FILTER & INTERAKTIF
   const [startDate, setStartDate] = useState("");
@@ -317,26 +264,29 @@ export default function Feedback() {
   };
 
   // Submit Balasan / Follow-up Staf
-  const handleSubmitReply = (e) => {
+  const handleSubmitReply = async (e) => {
     e.preventDefault();
     if (!replyText) return;
 
-    const updated = surveysList.map(s => {
-      if (s.id === selectedSurveyToReply.id) {
-        return {
-          ...s,
-          replied: true,
-          replyText: replyText
-        };
-      }
-      return s;
-    });
+    try {
+      const { error } = await supabase
+        .from("guest_reviews")
+        .update({
+          reply_text: replyText,
+          replied_at: new Date().toISOString()
+        })
+        .eq("id", selectedSurveyToReply.id);
+      if (error) throw error;
 
-    setSurveysList(updated);
-    localStorage.setItem("hotelify_surveys", JSON.stringify(updated));
-    setSelectedSurveyToReply(null);
-    setReplyText("");
-    triggerToast("Balasan umpan balik berhasil disimpan dan terkirim!");
+      await fetchReviews();
+      
+      setSelectedSurveyToReply(null);
+      setReplyText("");
+      triggerToast("Balasan umpan balik berhasil disimpan dan terkirim!");
+    } catch (err) {
+      console.error("Gagal menyimpan balasan:", err);
+      alert("Gagal menyimpan balasan: " + err.message);
+    }
   };
 
   return (

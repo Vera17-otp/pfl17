@@ -161,7 +161,7 @@ function App() {
 
                 {/* ─── GUEST AUTH (Login / Register / Forgot) ─────────────────── */}
                 <Route element={<GuestAuthLayout />}>
-                    <Route path="/guest/login" element={<GuestLogin />} />
+                    <Route path="/guest/login" element={<Navigate to="/login" replace />} />
                     <Route path="/guest/register" element={<GuestRegister />} />
                     <Route path="/guest/lupa-password" element={<GuestForgot />} />
                     <Route path="/guest/forgot-password" element={<GuestForgot />} />

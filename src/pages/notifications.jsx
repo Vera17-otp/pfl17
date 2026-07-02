@@ -14,6 +14,7 @@ import {
   FaTrashAlt,
   FaInfoCircle
 } from "react-icons/fa";
+import { supabase } from "../lib/supabase";
 
 // Mengambil data reservasi untuk simulasi penggabungan template
 import { reservations } from "../data/reservations";
@@ -223,8 +224,8 @@ export default function Notifications() {
     localStorage.setItem("hotelify_notification_templates", JSON.stringify(updated));
   };
 
-  // 5. TEST NOTIFICATION TRIGGER (SIMULATION)
-  const handleSendTestNotification = (e) => {
+  // 5. TEST NOTIFICATION TRIGGER (SIMULATION & DB SYNC)
+  const handleSendTestNotification = async (e) => {
     e.preventDefault();
     if (!testBookingId) {
       alert("Harap pilih salah satu reservasi tamu!");
@@ -246,12 +247,36 @@ export default function Notifications() {
     const newLogId = `NLOG-${logs.length + 7008}`;
     const nowStr = new Date().toLocaleString("id-ID", { dateStyle: 'short', timeStyle: 'short' }) + " WIB";
 
-    // Simulasikan kegagalan acak kecil jika data tidak lengkap (misal nomor WhatsApp)
+    // Simulasikan kegagalan acak kecil jika data tidak lengkap
     let isSuccess = true;
     let failReason = "";
     if (targetTemplate.channel.includes("WhatsApp") && targetRes.guestName.includes("Elena")) {
       isSuccess = false;
       failReason = "Gagal WhatsApp - Nomor tidak valid/tidak aktif.";
+    }
+
+    // Connect to Supabase system_notifications table
+    try {
+      const emailQuery = targetRes.email || `${targetRes.guestName.toLowerCase().replace(/\s+/g, '')}@example.com`;
+      const { data: guestProfile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("email", emailQuery)
+        .maybeSingle();
+
+      if (guestProfile && isSuccess) {
+        await supabase
+          .from("system_notifications")
+          .insert([{
+            profile_id: guestProfile.id,
+            title: targetTemplate.name,
+            content: mergedText,
+            type: "info",
+            is_read: false
+          }]);
+      }
+    } catch (dbErr) {
+      console.error("Gagal menyimpan notifikasi ke DB:", dbErr);
     }
 
     const newLog = {

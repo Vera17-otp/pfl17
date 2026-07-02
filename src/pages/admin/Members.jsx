@@ -49,15 +49,23 @@ function Avatar({ name }) {
 function EditModal({ member, onClose, onSave }) {
   const [form, setForm] = useState({
     full_name: member.full_name || "",
-    phone_number: member.phone_number || "",
-    address: member.address || "",
-    avatar_url: member.avatar_url || "",
-    membership_type: member.membership_type || "Regular",
+    phone: member.phone || "",
+    role: member.role || "member",
+    tier_id: member.tier_id || "",
   });
+  const [tiers, setTiers] = useState([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  useEffect(() => {
+    async function fetchTiers() {
+      const { data } = await supabase.from("member_tiers").select("*").order("min_points", { ascending: true });
+      if (data) setTiers(data);
+    }
+    fetchTiers();
+  }, []);
 
   async function handleSave(e) {
     e.preventDefault();
@@ -65,25 +73,26 @@ function EditModal({ member, onClose, onSave }) {
     setSaving(true);
     setError("");
 
+    const updates = {
+      full_name: form.full_name.trim(),
+      phone: form.phone.trim(),
+      role: form.role,
+      tier_id: form.tier_id || null,
+      updated_at: new Date().toISOString(),
+    };
+
     const { error: updateError } = await supabase
-      .from("members")
-      .update({
-        full_name: form.full_name,
-        phone_number: form.phone_number,
-        address: form.address,
-        avatar_url: form.avatar_url || null,
-        membership_type: form.membership_type,
-        updated_at: new Date().toISOString(),
-      })
+      .from("profiles")
+      .update(updates)
       .eq("id", member.id);
 
     if (updateError) {
-      setError("Gagal memperbarui data. Silakan coba lagi.");
+      setError("Gagal memperbarui data: " + updateError.message);
       setSaving(false);
       return;
     }
 
-    onSave({ ...member, ...form, updated_at: new Date().toISOString() });
+    onSave({ ...member, ...updates });
     onClose();
   }
 
@@ -104,7 +113,7 @@ function EditModal({ member, onClose, onSave }) {
     <div style={{
       position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)",
       display: "flex", alignItems: "center", justifyContent: "center",
-      zIndex: 1000, padding: "20px",
+      zindex: 1000, padding: "20px",
     }}>
       <div style={{
         backgroundColor: "#fff", borderRadius: "20px", padding: "32px",
@@ -112,7 +121,7 @@ function EditModal({ member, onClose, onSave }) {
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
           <h3 style={{ fontSize: "1.2rem", fontWeight: 800, color: "#1E293B", margin: 0 }}>
-            Edit Anggota
+            Edit Pengguna
           </h3>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#94A3B8", fontSize: "1.2rem" }}>
             <FaTimes />
@@ -132,21 +141,21 @@ function EditModal({ member, onClose, onSave }) {
           </div>
           <div>
             <label style={labelStyle}>Nomor HP</label>
-            <input type="tel" value={form.phone_number} onChange={e => set("phone_number", e.target.value)} style={inputStyle} disabled={saving} />
+            <input type="tel" value={form.phone} onChange={e => set("phone", e.target.value)} style={inputStyle} disabled={saving} />
           </div>
           <div>
-            <label style={labelStyle}>Alamat</label>
-            <textarea value={form.address} onChange={e => set("address", e.target.value)} style={{ ...inputStyle, resize: "none" }} rows={2} disabled={saving} />
+            <label style={labelStyle}>Peran (Role) *</label>
+            <select value={form.role} onChange={e => set("role", e.target.value)} style={{ ...inputStyle, cursor: "pointer" }} disabled={saving}>
+              <option value="member">Member (Tamu Terdaftar)</option>
+              <option value="admin">Admin (Pengelola Hotel)</option>
+            </select>
           </div>
           <div>
-            <label style={labelStyle}>Avatar URL</label>
-            <input type="text" placeholder="https://..." value={form.avatar_url} onChange={e => set("avatar_url", e.target.value)} style={inputStyle} disabled={saving} />
-          </div>
-          <div>
-            <label style={labelStyle}>Tipe Keanggotaan</label>
-            <select value={form.membership_type} onChange={e => set("membership_type", e.target.value)} style={{ ...inputStyle, cursor: "pointer" }} disabled={saving}>
-              {["Regular", "Silver", "Gold", "Platinum"].map(t => (
-                <option key={t} value={t}>{t}</option>
+            <label style={labelStyle}>Tier Keanggotaan</label>
+            <select value={form.tier_id || ""} onChange={e => set("tier_id", e.target.value || "")} style={{ ...inputStyle, cursor: "pointer" }} disabled={saving}>
+              <option value="">Basic (Tanpa Tier)</option>
+              {tiers.map(t => (
+                <option key={t.id} value={t.id}>{t.name} (Min. {t.min_points} Poin)</option>
               ))}
             </select>
           </div>
@@ -251,8 +260,10 @@ export default function Members() {
 
   const filtered = members.filter(m =>
     (m.full_name || "").toLowerCase().includes(search.toLowerCase()) ||
-    (m.phone_number || "").includes(search) ||
-    (m.membership_type || "").toLowerCase().includes(search.toLowerCase())
+    (m.email || "").toLowerCase().includes(search.toLowerCase()) ||
+    (m.phone || "").includes(search) ||
+    (m.role || "").toLowerCase().includes(search.toLowerCase()) ||
+    (m.member_tiers?.name || "").toLowerCase().includes(search.toLowerCase())
   );
 
   const formatDate = (dateStr) => {
@@ -279,14 +290,14 @@ export default function Members() {
       )}
 
       {/* Page Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "24px", flexWrap: "wrap", gap: "12px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifycontent: "space-between", marginBottom: "24px", flexWrap: "wrap", gap: "12px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <div style={{ width: "44px", height: "44px", borderRadius: "12px", backgroundColor: "#EFF6FF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.3rem" }}>
             <FaUsers style={{ color: "#1E3A5F" }} />
           </div>
           <div>
-            <h1 style={{ fontSize: "1.4rem", fontWeight: 800, color: "#1E293B", margin: 0 }}>Manajemen Anggota</h1>
-            <p style={{ fontSize: "0.8rem", color: "#94A3B8", margin: "2px 0 0" }}>{members.length} total anggota terdaftar</p>
+            <h1 style={{ fontSize: "1.4rem", fontWeight: 800, color: "#1E293B", margin: 0 }}>Manajemen Pengguna</h1>
+            <p style={{ fontSize: "0.8rem", color: "#94A3B8", margin: "2px 0 0" }}>{members.length} total pengguna terdaftar</p>
           </div>
         </div>
 
@@ -295,7 +306,7 @@ export default function Members() {
           <FaSearch style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#94A3B8", fontSize: "0.85rem" }} />
           <input
             type="text"
-            placeholder="Cari nama, HP, atau tier..."
+            placeholder="Cari nama, email, HP, atau role..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             style={{
@@ -312,7 +323,7 @@ export default function Members() {
       {loading && (
         <div style={{ textAlign: "center", padding: "60px 20px" }}>
           <ImSpinner2 style={{ animation: "spin 1s linear infinite", fontSize: "2rem", color: "#1E3A5F" }} />
-          <p style={{ marginTop: "12px", color: "#94A3B8", fontSize: "0.88rem" }}>Memuat data anggota...</p>
+          <p style={{ marginTop: "12px", color: "#94A3B8", fontSize: "0.88rem" }}>Memuat data pengguna...</p>
         </div>
       )}
 
@@ -333,7 +344,7 @@ export default function Members() {
         <div style={{ textAlign: "center", padding: "60px 20px", backgroundColor: "#fff", borderRadius: "16px", border: "1px solid #F0EAE0" }}>
           <FaUserPlus style={{ fontSize: "2.5rem", color: "#94A3B8", marginBottom: "12px" }} />
           <p style={{ color: "#64748B", fontWeight: 600, fontSize: "1rem" }}>
-            {search ? "Tidak ada anggota yang cocok dengan pencarian." : "Belum ada anggota terdaftar."}
+            {search ? "Tidak ada pengguna yang cocok dengan pencarian." : "Belum ada pengguna terdaftar."}
           </p>
           {search && (
             <button onClick={() => setSearch("")}
@@ -351,7 +362,7 @@ export default function Members() {
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ backgroundColor: "#F8FAFC", borderBottom: "1px solid #E2E8F0" }}>
-                  {["Anggota", "No. HP", "Alamat", "Tier", "Bergabung", "Diperbarui", "Aksi"].map(h => (
+                  {["Nama", "Email", "No. HP", "Peran", "Tier Keanggotaan", "Total Poin", "Aksi"].map(h => (
                     <th key={h} style={{ padding: "14px 16px", textAlign: "left", fontSize: "0.72rem", fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: "0.5px", whiteSpace: "nowrap" }}>
                       {h}
                     </th>
@@ -365,46 +376,50 @@ export default function Members() {
                     onMouseEnter={e => e.currentTarget.style.backgroundColor = "#FAFBFC"}
                     onMouseLeave={e => e.currentTarget.style.backgroundColor = "transparent"}
                   >
-                    {/* Anggota */}
+                    {/* Nama */}
                     <td style={{ padding: "14px 16px" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                        {m.avatar_url ? (
-                          <img src={m.avatar_url} alt={m.full_name} style={{ width: "38px", height: "38px", borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
-                        ) : (
-                          <Avatar name={m.full_name} />
-                        )}
+                        <Avatar name={m.full_name} />
                         <div>
                           <p style={{ margin: 0, fontWeight: 700, color: "#1E293B", fontSize: "0.88rem" }}>{m.full_name || "-"}</p>
-                          <p style={{ margin: "1px 0 0", fontSize: "0.72rem", color: "#94A3B8" }}>ID #{m.id}</p>
+                          <p style={{ margin: "1px 0 0", fontSize: "0.72rem", color: "#94A3B8" }}>ID #{m.id.substring(0, 8)}...</p>
                         </div>
                       </div>
                     </td>
 
-                    {/* Phone */}
-                    <td style={{ padding: "14px 16px", fontSize: "0.85rem", color: "#475569", whiteSpace: "nowrap" }}>
-                      {m.phone_number || "-"}
+                    {/* Email */}
+                    <td style={{ padding: "14px 16px", fontSize: "0.85rem", color: "#475569" }}>
+                      {m.email || "-"}
                     </td>
 
-                    {/* Address */}
-                    <td style={{ padding: "14px 16px", fontSize: "0.83rem", color: "#64748B", maxWidth: "180px" }}>
-                      <span style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                        {m.address || "-"}
+                    {/* Phone */}
+                    <td style={{ padding: "14px 16px", fontSize: "0.85rem", color: "#475569", whiteSpace: "nowrap" }}>
+                      {m.phone || "-"}
+                    </td>
+
+                    {/* Peran */}
+                    <td style={{ padding: "14px 16px" }}>
+                      <span style={{
+                        textTransform: "capitalize",
+                        fontSize: "0.8rem",
+                        fontWeight: 700,
+                        color: m.role === "admin" ? "#DC2626" : "#2563EB",
+                        backgroundColor: m.role === "admin" ? "#FEF2F2" : "#EFF6FF",
+                        padding: "4px 8px",
+                        borderRadius: "6px"
+                      }}>
+                        {m.role === "admin" ? "Admin" : "Member"}
                       </span>
                     </td>
 
                     {/* Membership */}
                     <td style={{ padding: "14px 16px" }}>
-                      <MembershipBadge type={m.membership_type} />
+                      <MembershipBadge type={m.member_tiers?.name || "Basic"} />
                     </td>
 
-                    {/* Joined */}
-                    <td style={{ padding: "14px 16px", fontSize: "0.82rem", color: "#94A3B8", whiteSpace: "nowrap" }}>
-                      {formatDate(m.joined_at)}
-                    </td>
-
-                    {/* Updated */}
-                    <td style={{ padding: "14px 16px", fontSize: "0.82rem", color: "#94A3B8", whiteSpace: "nowrap" }}>
-                      {formatDate(m.updated_at)}
+                    {/* Poin */}
+                    <td style={{ padding: "14px 16px", fontSize: "0.85rem", fontWeight: 700, color: "#1E293B" }}>
+                      {m.total_points || 0} pts
                     </td>
 
                     {/* Actions */}
@@ -439,7 +454,7 @@ export default function Members() {
           {/* Table footer */}
           <div style={{ padding: "12px 16px", borderTop: "1px solid #F1F5F9", backgroundColor: "#FAFBFC" }}>
             <p style={{ margin: 0, fontSize: "0.78rem", color: "#94A3B8" }}>
-              Menampilkan <strong>{filtered.length}</strong> dari <strong>{members.length}</strong> anggota
+              Menampilkan <strong>{filtered.length}</strong> dari <strong>{members.length}</strong> pengguna
             </p>
           </div>
         </div>

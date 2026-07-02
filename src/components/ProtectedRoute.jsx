@@ -5,7 +5,7 @@ import { supabase } from "../lib/supabase";
 /**
  * ProtectedRoute — wraps member-only routes.
  * Checks both localStorage memberSession and live Supabase Auth session.
- * Redirects to /guest/login if not authenticated.
+ * Redirects to /guest/login if not authenticated or not a member/admin.
  */
 export default function ProtectedRoute({ children }) {
   const [status, setStatus] = useState("checking"); // "checking" | "ok" | "denied"
@@ -13,14 +13,21 @@ export default function ProtectedRoute({ children }) {
   useEffect(() => {
     async function checkSession() {
       try {
-        // Check Supabase Auth session (handles token refresh automatically)
         const { data: { session } } = await supabase.auth.getSession();
 
         if (session) {
-          // Sync memberSession in localStorage
-          localStorage.setItem("memberSession", JSON.stringify(session));
-          setStatus("ok");
-          return;
+          // Verify profile role
+          const { data: profile, error } = await supabase
+            .from("profiles")
+            .select("role")
+            .eq("id", session.user.id)
+            .single();
+
+          if (!error && profile && (profile.role === "member" || profile.role === "admin")) {
+            localStorage.setItem("memberSession", JSON.stringify(session));
+            setStatus("ok");
+            return;
+          }
         }
 
         // Fallback: check localStorage memberSession
@@ -29,20 +36,27 @@ export default function ProtectedRoute({ children }) {
           try {
             const parsed = JSON.parse(stored);
             if (parsed?.access_token) {
-              // Try to restore via Supabase
-              const { error } = await supabase.auth.setSession({
+              const { data: { session: restoredSession }, error } = await supabase.auth.setSession({
                 access_token: parsed.access_token,
                 refresh_token: parsed.refresh_token,
               });
-              if (!error) {
-                setStatus("ok");
-                return;
+              if (!error && restoredSession) {
+                const { data: profile } = await supabase
+                  .from("profiles")
+                  .select("role")
+                  .eq("id", restoredSession.user.id)
+                  .single();
+
+                if (profile && (profile.role === "member" || profile.role === "admin")) {
+                  setStatus("ok");
+                  return;
+                }
               }
             }
           } catch { /* invalid stored session */ }
         }
 
-        // Not authenticated
+        // Not authenticated or not allowed
         localStorage.removeItem("memberSession");
         localStorage.removeItem("memberData");
         setStatus("denied");
@@ -81,3 +95,4 @@ export default function ProtectedRoute({ children }) {
 
   return children;
 }
+

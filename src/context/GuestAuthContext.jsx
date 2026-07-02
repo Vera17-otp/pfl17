@@ -18,17 +18,18 @@ function loadProfileFromStorage() {
     const raw = localStorage.getItem("memberData");
     if (raw) {
       const data = JSON.parse(raw);
+      const tierName = data.member_tiers?.name || "Silver";
       return {
-        id: data.user_id || data.id || null,
+        id: data.id || null,
         namaLengkap: data.full_name || "",
-        email: "",
-        noHp: data.phone_number || "",
-        alamat: data.address || "",
-        foto: data.avatar_url || null,
-        membership: data.membership_type || "Regular",
-        isPremium: data.membership_type === "Platinum" || data.membership_type === "Gold",
+        email: data.email || "",
+        noHp: data.phone || "",
+        alamat: "",
+        foto: null,
+        membership: tierName,
+        isPremium: tierName === "Platinum" || tierName === "Gold",
         premiumExpiry: null,
-        poin: 0,
+        poin: data.total_points || 0,
         reservasiAktif: 0,
         keluhanAktif: 0,
         preferensi: {
@@ -42,7 +43,6 @@ function loadProfileFromStorage() {
           email: { konfirmasiBooking: true, reminderCheckIn: true, promo: false, updateKeluhan: true },
           whatsapp: { konfirmasiBooking: true, reminderCheckIn: false, promo: false, updateKeluhan: true },
         },
-        // raw members table data for reference
         _raw: data,
       };
     }
@@ -82,9 +82,9 @@ export function GuestAuthProvider({ children }) {
           } else {
             // Fetch fresh from DB if localStorage is missing
             const { data: memberData } = await supabase
-              .from("members")
-              .select("*")
-              .eq("user_id", session.user.id)
+              .from("profiles")
+              .select("*, member_tiers(*)")
+              .eq("id", session.user.id)
               .single();
             if (memberData) {
               localStorage.setItem("memberData", JSON.stringify(memberData));
@@ -190,22 +190,27 @@ export function GuestAuthProvider({ children }) {
     const currentData = profile?._raw;
     if (currentData?.id) {
       const { error } = await supabase
-        .from("members")
+        .from("profiles")
         .update({
           full_name: data.namaLengkap || currentData.full_name,
-          phone_number: data.noHp || currentData.phone_number,
-          address: data.alamat || currentData.address,
-          avatar_url: data.foto || currentData.avatar_url,
+          phone: data.noHp || currentData.phone,
           updated_at: new Date().toISOString(),
         })
         .eq("id", currentData.id);
 
       if (!error) {
-        const updated = { ...currentData, full_name: data.namaLengkap || currentData.full_name, phone_number: data.noHp || currentData.phone_number, address: data.alamat || currentData.address, avatar_url: data.foto || currentData.avatar_url };
-        localStorage.setItem("memberData", JSON.stringify(updated));
+        const { data: freshProfile } = await supabase
+          .from("profiles")
+          .select("*, member_tiers(*)")
+          .eq("id", currentData.id)
+          .single();
+        if (freshProfile) {
+          localStorage.setItem("memberData", JSON.stringify(freshProfile));
+          const formatted = loadProfileFromStorage();
+          setProfile(formatted);
+        }
       }
     }
-    setProfile(prev => ({ ...prev, ...data }));
     showToast("Profil berhasil diperbarui!");
   }, [profile, showToast]);
 

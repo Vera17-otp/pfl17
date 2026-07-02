@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { STAFF_LIST, DEPARTMENTS } from "./ChatContext";
+import { supabase } from "../lib/supabase";
 
 export { STAFF_LIST, DEPARTMENTS };
 
@@ -196,79 +197,143 @@ const SEED_TASKS = [
   },
 ];
 
-// ── Context ───────────────────────────────────────────────────────────────────
 const TaskContext = createContext(null);
 
 export function TaskProvider({ children, addSystemNotif }) {
-  const [tasks, setTasks] = useState(() => {
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchTasks = async () => {
     try {
-      const raw = localStorage.getItem(LS_KEY);
-      if (raw) return JSON.parse(raw);
-    } catch (_) { /* ignore */ }
-    return SEED_TASKS;
-  });
+      const { data, error } = await supabase
+        .from("staff_tasks")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+
+      const formatted = data.map(t => ({
+        id: t.id,
+        title: t.task_name,
+        description: t.description || "",
+        dept: t.dept,
+        assigneeId: t.assigned_to,
+        priority: t.priority,
+        status: t.status,
+        deadline: t.completed_at || nowISO(),
+        roomRef: t.room_number,
+        createdAt: t.created_at,
+        completedAt: t.completed_at,
+        source: t.source || "manual"
+      }));
+      setTasks(formatted);
+    } catch (err) {
+      console.error("Gagal memuat staff tasks:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    localStorage.setItem(LS_KEY, JSON.stringify(tasks));
-  }, [tasks]);
+    fetchTasks();
+  }, []);
 
   // ── Buat tugas baru ────────────────────────────────────────────────────────
-  const createTask = useCallback((data) => {
-    const task = {
-      id: uid(),
-      title: data.title,
-      description: data.description || "",
-      dept: data.dept,
-      assigneeId: data.assigneeId || null,
-      priority: data.priority || "Sedang",
-      status: "Belum Dimulai",
-      deadline: data.deadline || hoursLater(8),
-      roomRef: data.roomRef || null,
-      createdAt: nowISO(),
-      completedAt: null,
-      source: data.source || "manual",
-    };
-    setTasks(prev => [task, ...prev]);
+  const createTask = useCallback(async (data) => {
+    try {
+      const { data: newRow, error } = await supabase
+        .from("staff_tasks")
+        .insert([{
+          task_name: data.title,
+          description: data.description || "",
+          dept: data.dept,
+          assigned_to: data.assigneeId || null,
+          priority: data.priority || "Sedang",
+          status: "Belum Dimulai",
+          room_number: data.roomRef || null,
+          source: data.source || "manual"
+        }])
+        .select()
+        .single();
+      if (error) throw error;
 
-    // Kirim notifikasi ke Chat Sistem
-    if (addSystemNotif) {
-      const assignee = STAFF_LIST.find(s => s.id === task.assigneeId);
-      const assigneeName = assignee ? assignee.name : "Staf";
-      addSystemNotif(
-        `📋 Tugas baru: "${task.title}" ditetapkan untuk ${assigneeName} [${task.priority}]`,
-        task.roomRef ? { label: `Kamar ${task.roomRef}`, refType: "room" } : null
-      );
+      await fetchTasks();
+
+      // Kirim notifikasi ke Chat Sistem
+      if (addSystemNotif) {
+        const assignee = STAFF_LIST.find(s => s.id === data.assigneeId);
+        const assigneeName = assignee ? assignee.name : "Staf";
+        addSystemNotif(
+          `📋 Tugas baru: "${data.title}" ditetapkan untuk ${assigneeName} [${data.priority || "Sedang"}]`,
+          data.roomRef ? { label: `Kamar ${data.roomRef}`, refType: "room" } : null
+        );
+      }
+    } catch (err) {
+      console.error("Gagal create task:", err);
     }
-
-    return task;
   }, [addSystemNotif]);
 
   // ── Update status tugas ────────────────────────────────────────────────────
-  const updateTaskStatus = useCallback((taskId, newStatus) => {
-    setTasks(prev => prev.map(t =>
-      t.id === taskId
-        ? {
-            ...t,
-            status: newStatus,
-            completedAt: newStatus === "Selesai" ? nowISO() : t.completedAt,
-          }
-        : t
-    ));
+  const updateTaskStatus = useCallback(async (taskId, newStatus) => {
+    try {
+      const updates = {
+        status: newStatus,
+        completed_at: newStatus === "Selesai" ? nowISO() : null,
+        updated_at: nowISO()
+      };
+      const { error } = await supabase
+        .from("staff_tasks")
+        .update(updates)
+        .eq("id", taskId);
+      if (error) throw error;
+
+      await fetchTasks();
+    } catch (err) {
+      console.error("Gagal update task status:", err);
+    }
   }, []);
 
   // ── Update tugas (full edit) ───────────────────────────────────────────────
-  const updateTask = useCallback((taskId, data) => {
-    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...data } : t));
+  const updateTask = useCallback(async (taskId, data) => {
+    try {
+      const updates = {
+        task_name: data.title,
+        description: data.description,
+        dept: data.dept,
+        assigned_to: data.assigneeId,
+        priority: data.priority,
+        status: data.status,
+        room_number: data.roomRef,
+        updated_at: nowISO()
+      };
+      const { error } = await supabase
+        .from("staff_tasks")
+        .update(updates)
+        .eq("id", taskId);
+      if (error) throw error;
+
+      await fetchTasks();
+    } catch (err) {
+      console.error("Gagal update task:", err);
+    }
   }, []);
 
   // ── Hapus tugas ────────────────────────────────────────────────────────────
-  const deleteTask = useCallback((taskId) => {
-    setTasks(prev => prev.filter(t => t.id !== taskId));
+  const deleteTask = useCallback(async (taskId) => {
+    try {
+      const { error } = await supabase
+        .from("staff_tasks")
+        .delete()
+        .eq("id", taskId);
+      if (error) throw error;
+
+      await fetchTasks();
+    } catch (err) {
+      console.error("Gagal delete task:", err);
+    }
   }, []);
 
   // ── Auto: checkout → tugas kebersihan ─────────────────────────────────────
   const createCheckoutTask = useCallback((roomNumber, bookingId) => {
-    // Tentukan HK staf yang paling sedikit tugasnya
     const hkStaff = STAFF_LIST.filter(s => s.dept === "Housekeeping");
     const taskCounts = hkStaff.map(s => ({
       id: s.id,
@@ -316,12 +381,11 @@ export function TaskProvider({ children, addSystemNotif }) {
 
   // ── Statistik produktivitas per staf ──────────────────────────────────────
   const getProductivityStats = useCallback((period = "week") => {
-    const now = new Date();
     const cutoff = new Date();
     if (period === "today") {
       cutoff.setHours(0, 0, 0, 0);
     } else {
-      cutoff.setDate(now.getDate() - 7);
+      cutoff.setDate(cutoff.getDate() - 7);
     }
 
     return STAFF_LIST.map(staff => {

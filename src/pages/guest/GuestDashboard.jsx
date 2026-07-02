@@ -1,5 +1,7 @@
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useGuestAuth } from "../../context/GuestAuthContext";
+import { supabase } from "../../lib/supabase";
 import {
   FaCalendarAlt, FaStar, FaBell, FaExclamationCircle,
   FaPlus, FaConciergeBell, FaDoorOpen, FaDoorClosed,
@@ -191,9 +193,50 @@ function LoyaltyMiniCard({ profile, navigate }) {
 export default function GuestDashboard() {
   const { profile, notifications, unreadCount } = useGuestAuth();
   const navigate = useNavigate();
+  const [resList, setResList] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Cari reservasi aktif dengan status "Check-in"
-  const activeReservation = reservations.find(r => r.status === "Check-in" && (r.guestName.includes(profile.namaLengkap?.split(" ")[0]) || r.guestName === "Vera Zakia"));
+  useEffect(() => {
+    async function loadData() {
+      if (!profile?.id) return;
+      try {
+        const { data, error } = await supabase
+          .from("reservations")
+          .select("*, rooms(*)")
+          .eq("guest_id", profile.id);
+        if (error) throw error;
+        setResList(data || []);
+      } catch (err) {
+        console.error("Gagal memuat reservasi tamu:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, [profile?.id]);
+
+  const activeReservation = useMemo(() => {
+    const activeRes = resList.find(r => r.status === "checked_in");
+    if (!activeRes) return null;
+    return {
+      bookingId: activeRes.id,
+      guestName: profile.namaLengkap,
+      roomNumber: activeRes.rooms?.room_number || "305",
+      roomType: activeRes.rooms?.room_type || "Deluxe Room",
+      checkIn: activeRes.check_in,
+      checkOut: activeRes.check_out,
+      totalPayment: Number(activeRes.total_price),
+      status: "Check-in"
+    };
+  }, [resList, profile?.namaLengkap]);
+
+  const stats = useMemo(() => {
+    const activeCount = resList.filter(r => r.status === "pending" || r.status === "confirmed" || r.status === "checked_in").length;
+    return {
+      reservasiAktif: activeCount,
+      keluhanAktif: 0
+    };
+  }, [resList]);
 
   if (activeReservation) {
     return <GuestInStayDashboard activeReservation={activeReservation} />;
@@ -214,7 +257,7 @@ export default function GuestDashboard() {
   const now = new Date();
   const greetingHour = now.getHours();
   const greeting = greetingHour < 11 ? "Selamat Pagi" : greetingHour < 15 ? "Selamat Siang" : greetingHour < 18 ? "Selamat Sore" : "Selamat Malam";
-  const nama = profile.namaLengkap?.split(" ")[0] || "Tamu";
+  const nama = profile?.namaLengkap?.split(" ")[0] || "Tamu";
 
   const recentActivities = [
     { icon: <FaCalendarAlt />, text: "Reservasi Deluxe Room dikonfirmasi", sub: "Hari ini, 10:32", color: "#1E3A5F" },
@@ -238,10 +281,10 @@ export default function GuestDashboard() {
 
       {/* Summary Cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "14px", marginBottom: "28px" }}>
-        <SummaryCard icon={<FaCalendarAlt />} label="Reservasi Aktif" value={profile.reservasiAktif} sub="1 akan datang" color="#1E3A5F" bg="#EBF0F8" onClick={() => navigate("/guest/reservasi")} />
-        <SummaryCard icon={<FaStar />} label="Poin Loyalitas" value={profile.poin.toLocaleString("id-ID")} sub={`Tier ${profile.membership}`} color="#C9A84C" bg="#FEF3C7" onClick={() => navigate("/guest/loyalitas")} />
+        <SummaryCard icon={<FaCalendarAlt />} label="Reservasi Aktif" value={stats.reservasiAktif} sub={`${stats.reservasiAktif} reservasi`} color="#1E3A5F" bg="#EBF0F8" onClick={() => navigate("/guest/reservasi")} />
+        <SummaryCard icon={<FaStar />} label="Poin Loyalitas" value={profile?.poin?.toLocaleString("id-ID") || "0"} sub={`Tier ${profile?.membership || "Silver"}`} color="#C9A84C" bg="#FEF3C7" onClick={() => navigate("/guest/loyalitas")} />
         <SummaryCard icon={<FaBell />} label="Notifikasi" value={unreadCount} sub={unreadCount > 0 ? "belum dibaca" : "semua terbaca"} color={unreadCount > 0 ? "#EF4444" : "#10B981"} bg={unreadCount > 0 ? "#FEE2E2" : "#D1FAE5"} onClick={() => navigate("/guest/notifikasi")} />
-        <SummaryCard icon={<FaExclamationCircle />} label="Keluhan Aktif" value={profile.keluhanAktif} sub="sedang diproses" color="#F59E0B" bg="#FEF3C7" onClick={() => navigate("/guest/keluhan")} />
+        <SummaryCard icon={<FaExclamationCircle />} label="Keluhan Aktif" value={stats.keluhanAktif} sub="sedang diproses" color="#F59E0B" bg="#FEF3C7" onClick={() => navigate("/guest/keluhan")} />
       </div>
 
       {/* Shortcuts */}

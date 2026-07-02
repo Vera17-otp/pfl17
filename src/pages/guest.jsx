@@ -19,6 +19,8 @@ import {
   FaTimes
 } from "react-icons/fa";
 
+import { supabase } from "../lib/supabase";
+
 // Import data asli
 import { reservations } from "../data/reservations";
 import { guests } from "../data/guest";
@@ -53,73 +55,86 @@ export default function Guests() {
 
   const [currentNoteText, setCurrentNoteText] = useState("");
 
-  // 2. AGREGASI DATA TAMU SECARA DINAMIS DARI DATABASE (LocalStorage Integration)
-  const aggregatedGuests = useMemo(() => {
-    const savedRes = localStorage.getItem("hotelify_reservations");
-    const activeReservations = savedRes ? JSON.parse(savedRes) : reservations;
+  // 2. AGREGASI DATA TAMU SECARA DINAMIS DARI DATABASE (Supabase Integration)
+  const [guestsList, setGuestsList] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-    const guestMap = {};
-    
-    // Kelompokkan reservasi berdasarkan nama tamu
-    activeReservations.forEach(res => {
-      if (!guestMap[res.guestName]) {
-        guestMap[res.guestName] = [];
-      }
-      guestMap[res.guestName].push(res);
-    });
+  const fetchGuests = async () => {
+    try {
+      const { data: profiles, error: profileError } = await supabase
+        .from("profiles")
+        .select("*, member_tiers(*)")
+        .eq("role", "member");
+      if (profileError) throw profileError;
 
-    // Petakan ke profil tamu lengkap
-    return Object.keys(guestMap).map((name, idx) => {
-      const bookings = guestMap[name];
-      const profile = guests.find(g => g.guestName === name) || {};
-      
-      // Hitung total stay: total stay historis + booking aktif di data reservasi
-      const totalStays = (profile.totalStay || 0) + bookings.length;
+      const { data: dbRes, error: resError } = await supabase
+        .from("reservations")
+        .select("*, rooms(*)");
+      if (resError) throw resError;
 
-      // Cari kunjungan terakhir (sortir tanggal check-in terbaru)
-      const sortedBookings = [...bookings].sort((a, b) => {
-        return new Date(b.checkIn) - new Date(a.checkIn);
+      const mapped = profiles.map((p, idx) => {
+        const bookings = dbRes.filter(res => res.guest_id === p.id);
+        const totalStays = bookings.length;
+        
+        const sortedBookings = [...bookings].sort((a, b) => {
+          return new Date(b.check_in) - new Date(a.check_in);
+        });
+        const lastVisit = sortedBookings[0]?.check_in || "N/A";
+
+        const roomCounts = {};
+        bookings.forEach(b => {
+          if (b.rooms?.room_type) {
+            roomCounts[b.rooms.room_type] = (roomCounts[b.rooms.room_type] || 0) + 1;
+          }
+        });
+        let preferredRoom = "Standard Room";
+        let maxCount = 0;
+        Object.keys(roomCounts).forEach(type => {
+          if (roomCounts[type] > maxCount) {
+            maxCount = roomCounts[type];
+            preferredRoom = type;
+          }
+        });
+
+        let loyalty = p.member_tiers?.name || "Silver";
+
+        return {
+          guestId: p.id,
+          guestName: p.full_name || "Tamu",
+          email: p.email || "",
+          phone: p.phone || "",
+          origin: "Indonesia",
+          identityNumber: `327305${(p.phone || "000").replace(/\D/g, '').substring(0, 6)}000${idx + 1}`.substring(0, 16),
+          totalVisits: totalStays,
+          lastVisitDate: lastVisit,
+          loyaltyLabel: loyalty,
+          roomPreference: preferredRoom,
+          bookings: bookings.map(res => ({
+            bookingId: res.id,
+            roomNumber: res.rooms?.room_number || "",
+            roomType: res.rooms?.room_type || "",
+            checkIn: res.check_in,
+            checkOut: res.check_out,
+            status: res.status === "checked_in" ? "Check-in" : res.status === "checked_out" ? "Check-out" : res.status === "confirmed" ? "Dikonfirmasi" : res.status === "pending" ? "Menunggu Konfirmasi" : "Dibatalkan",
+            totalPayment: Number(res.total_price),
+            additionalServiceFee: 0
+          }))
+        };
       });
-      const lastVisit = sortedBookings[0]?.checkIn || "N/A";
 
-      // Preferensi kamar yang paling sering dipesan
-      const roomCounts = {};
-      bookings.forEach(b => {
-        roomCounts[b.roomType] = (roomCounts[b.roomType] || 0) + 1;
-      });
-      let preferredRoom = "Standard Room";
-      let maxCount = 0;
-      Object.keys(roomCounts).forEach(type => {
-        if (roomCounts[type] > maxCount) {
-          maxCount = roomCounts[type];
-          preferredRoom = type;
-        }
-      });
+      setGuestsList(mapped);
+    } catch (err) {
+      console.error("Error loading guests:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      // Label Loyalitas: Tamu Baru (1-2 stays), Tamu Setia (3-9 stays), VIP (10+ stays)
-      let loyalty = "Tamu Baru";
-      if (totalStays >= 10) loyalty = "VIP";
-      else if (totalStays >= 3) loyalty = "Tamu Setia";
-
-      // Generate NIK (Nomor Induk Kependudukan) buatan secara konsisten
-      const phoneDigits = profile.phone ? profile.phone.replace(/\D/g, '') : "10293";
-      const identityNumber = `327305${phoneDigits.substring(0, 6)}000${idx + 1}`.substring(0, 16);
-
-      return {
-        guestId: profile.guestId || `GST-${3000 + idx}`,
-        guestName: name,
-        email: profile.email || `${name.toLowerCase().replace(/\s+/g, '')}@example.com`,
-        phone: profile.phone || `0812-${phoneDigits.substring(0, 4)}-${phoneDigits.substring(4, 8) || "5678"}`,
-        origin: profile.origin || "Indonesia",
-        identityNumber,
-        totalVisits: totalStays,
-        lastVisitDate: lastVisit,
-        loyaltyLabel: loyalty,
-        roomPreference: preferredRoom,
-        bookings: bookings // Histori reservasi
-      };
-    });
+  useEffect(() => {
+    fetchGuests();
   }, []);
+
+  const aggregatedGuests = guestsList;
 
   // 3. STATISTIK TAMU PER SEGMEN (KPI cards)
   const segmentStats = useMemo(() => {

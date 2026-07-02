@@ -26,6 +26,7 @@ import {
 // Mengambil data reservasi awal untuk sinkronisasi tamu aktif
 import { reservations } from "../data/reservations";
 import { useTask } from "../context/TaskContext";
+import { supabase } from "../lib/supabase";
 
 // Helper functions defined outside the component for purity and React 19 compliance
 const getCategoryIcon = (category) => {
@@ -195,8 +196,42 @@ export default function HelpDesk() {
   };
 
   // 3. STATES
-  const [tickets, setTickets] = useState(getInitialTickets);
+  const [tickets, setTickets] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState(null);
+
+  const fetchTickets = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("helpdesk_tickets")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      
+      const formatted = data.map(t => ({
+        ticketId: t.id,
+        guestName: t.guest_name,
+        roomNumber: t.room_number,
+        category: t.category,
+        description: t.description,
+        priority: t.priority,
+        status: t.status,
+        department: t.department,
+        createdAt: t.created_at,
+        notes: t.notes || [],
+        history: t.history || []
+      }));
+      setTickets(formatted);
+    } catch (err) {
+      console.error("Gagal memuat tiket helpdesk:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTickets();
+  }, []);
   
   // Ticker untuk trigger update SLA timer (realtime count-up)
   const [currentTime, setCurrentTime] = useState(() => Date.now());
@@ -249,137 +284,159 @@ export default function HelpDesk() {
   // 5. HELPER FUNCTIONS REMOVED (DEFINED OUTSIDE)
 
   // 6. EVENT HANDLERS
-  const handleCreateTicket = (e) => {
+  // 6. EVENT HANDLERS
+  const handleCreateTicket = async (e) => {
     e.preventDefault();
     if (!formGuestName.trim() || !formRoomNumber.trim() || !formDescription.trim()) {
       alert("Harap lengkapi semua data keluhan tamu!");
       return;
     }
 
-    // Auto routing departemen berdasarkan kategori keluhan
     let routedDept = "Front Desk Staf";
     if (formCategory === "Kebersihan") routedDept = "Tim Housekeeping";
     else if (formCategory === "Fasilitas Rusak") routedDept = "Tim Maintenance";
     else if (formCategory === "Layanan Kamar") routedDept = "Tim F&B";
     else if (formCategory === "Kebisingan") routedDept = "Tim Keamanan";
 
-    const newTicketId = `TCK-${Math.floor(4100 + Math.random() * 800)}`;
-    const newTicket = {
-      ticketId: newTicketId,
-      guestName: formGuestName,
-      roomNumber: formRoomNumber,
-      category: formCategory,
-      description: formDescription,
-      priority: formPriority,
-      status: "Baru",
-      department: routedDept,
-      createdAt: new Date().toISOString(),
-      notes: [],
-      history: [
-        { status: "Baru", time: new Date().toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit' }) + " WIB", note: `Keluhan dibuat dan secara otomatis dirutekan ke ${routedDept}.` }
-      ]
-    };
+    const initialHistory = [
+      { status: "Baru", time: new Date().toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit' }) + " WIB", note: `Keluhan dibuat dan secara otomatis dirutekan ke ${routedDept}.` }
+    ];
 
-    const updated = [newTicket, ...tickets];
-    setTickets(updated);
-    localStorage.setItem("hotelify_tickets", JSON.stringify(updated));
+    try {
+      const { data, error } = await supabase
+        .from("helpdesk_tickets")
+        .insert([{
+          guest_name: formGuestName,
+          room_number: formRoomNumber,
+          category: formCategory,
+          description: formDescription,
+          priority: formPriority,
+          status: "Baru",
+          department: routedDept,
+          history: initialHistory,
+          notes: []
+        }])
+        .select()
+        .single();
+      if (error) throw error;
 
-    // Auto-buat tugas ke departemen terkait
-    createHelpdeskTask({
-      category: formCategory,
-      description: formDescription,
-      priority: formPriority,
-      roomNumber: formRoomNumber,
-    });
+      await fetchTickets();
 
-    // Reset Form fields
-    setFormGuestId("");
-    setFormGuestName("");
-    setFormRoomNumber("");
-    setFormDescription("");
+      const newTicket = {
+        ticketId: data.id,
+        guestName: data.guest_name,
+        roomNumber: data.room_number,
+        category: data.category,
+        description: data.description,
+        priority: data.priority,
+        status: data.status,
+        department: data.department,
+        createdAt: data.created_at,
+        notes: data.notes || [],
+        history: data.history || []
+      };
 
-    // Trigger visual notification simulator ke tamu
-    setGuestNotification({
-      ticketId: newTicketId,
-      roomNumber: formRoomNumber,
-      guestName: formGuestName,
-      category: formCategory,
-      message: `NOTIFIKASI TERKIRIM (WhatsApp/Email) ke ${formGuestName} (Kamar ${formRoomNumber}): "Halo ${formGuestName}, keluhan Anda mengenai '${formCategory}' telah kami terima (Tiket: ${newTicketId}). Tiket ini telah dirutekan ke ${routedDept} dengan prioritas ${formPriority}. Tim kami akan segera menangani masalah Anda. Terima kasih!"`
-    });
+      // Auto-buat tugas ke departemen terkait
+      createHelpdeskTask({
+        category: formCategory,
+        description: formDescription,
+        priority: formPriority,
+        roomNumber: formRoomNumber,
+      });
 
-    // Auto-select tiket baru agar langsung terbuka
-    setSelectedTicket(newTicket);
-  };
+      // Reset Form fields
+      setFormGuestId("");
+      setFormGuestName("");
+      setFormRoomNumber("");
+      setFormDescription("");
 
-  const handleUpdateStatus = (ticketId, nextStatus) => {
-    let routedDept = "";
-    const updated = tickets.map(t => {
-      if (t.ticketId === ticketId) {
-        routedDept = t.department;
-        const nowStr = new Date().toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit' }) + " WIB";
-        const historyNote = `Status diubah ke "${nextStatus}" oleh Staf Desk.`;
-        
-        return {
-          ...t,
-          status: nextStatus,
-          history: [...(t.history || []), { status: nextStatus, time: nowStr, note: historyNote }]
-        };
-      }
-      return t;
-    });
+      // Trigger visual notification simulator ke tamu
+      setGuestNotification({
+        ticketId: data.id,
+        roomNumber: formRoomNumber,
+        guestName: formGuestName,
+        category: formCategory,
+        message: `NOTIFIKASI TERKIRIM (WhatsApp/Email) ke ${formGuestName} (Kamar ${formRoomNumber}): "Halo ${formGuestName}, keluhan Anda mengenai '${formCategory}' telah kami terima (Tiket: ${data.id}). Tiket ini telah dirutekan ke ${routedDept} dengan prioritas ${formPriority}. Tim kami akan segera menangani masalah Anda. Terima kasih!"`
+      });
 
-    setTickets(updated);
-    localStorage.setItem("hotelify_tickets", JSON.stringify(updated));
-
-    // Update active selected ticket detail
-    const newSelected = updated.find(t => t.ticketId === ticketId);
-    setSelectedTicket(newSelected);
-
-    // Trigger visual notification simulator ke tamu
-    let statusMessageText = "";
-    if (nextStatus === "Sedang Diproses") {
-      statusMessageText = `sedang ditangani oleh ${routedDept}. Petugas kami segera mendatangi kamar Anda.`;
-    } else if (nextStatus === "Selesai") {
-      statusMessageText = `telah diselesaikan oleh ${routedDept}. Jika Anda masih membutuhkan bantuan, harap menghubungi Front Desk.`;
-    } else if (nextStatus === "Ditutup") {
-      statusMessageText = `telah ditutup secara resmi di sistem.`;
+      setSelectedTicket(newTicket);
+    } catch (err) {
+      console.error("Gagal membuat tiket:", err);
+      alert("Gagal membuat tiket: " + err.message);
     }
-
-    setGuestNotification({
-      ticketId: ticketId,
-      roomNumber: newSelected.roomNumber,
-      guestName: newSelected.guestName,
-      category: newSelected.category,
-      message: `NOTIFIKASI UPDATE TERKIRIM ke ${newSelected.guestName} (Kamar ${newSelected.roomNumber}): "Halo ${newSelected.guestName}, tiket keluhan Anda (${ticketId}) ${statusMessageText}"`
-    });
   };
 
-  const handleAddStaffNoteSubmit = (e) => {
+  const handleUpdateStatus = async (ticketId, nextStatus) => {
+    const target = tickets.find(t => t.ticketId === ticketId);
+    if (!target) return;
+
+    const nowStr = new Date().toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit' }) + " WIB";
+    const historyNote = `Status diubah ke "${nextStatus}" oleh Staf Desk.`;
+    const newHistory = [...(target.history || []), { status: nextStatus, time: nowStr, note: historyNote }];
+
+    try {
+      const { error } = await supabase
+        .from("helpdesk_tickets")
+        .update({
+          status: nextStatus,
+          history: newHistory
+        })
+        .eq("id", ticketId);
+      if (error) throw error;
+
+      await fetchTickets();
+
+      setSelectedTicket(prev => prev ? { ...prev, status: nextStatus, history: newHistory } : null);
+
+      let statusMessageText = "";
+      if (nextStatus === "Sedang Diproses") {
+        statusMessageText = `sedang ditangani oleh ${target.department}. Petugas kami segera mendatangi kamar Anda.`;
+      } else if (nextStatus === "Selesai") {
+        statusMessageText = `telah diselesaikan oleh ${target.department}. Jika Anda masih membutuhkan bantuan, harap menghubungi Front Desk.`;
+      } else if (nextStatus === "Ditutup") {
+        statusMessageText = `telah ditutup secara resmi di sistem.`;
+      }
+
+      setGuestNotification({
+        ticketId: ticketId,
+        roomNumber: target.roomNumber,
+        guestName: target.guestName,
+        category: target.category,
+        message: `NOTIFIKASI UPDATE TERKIRIM ke ${target.guestName} (Kamar ${target.roomNumber}): "Halo ${target.guestName}, tiket keluhan Anda (${ticketId}) ${statusMessageText}"`
+      });
+    } catch (err) {
+      console.error("Gagal update status tiket:", err);
+      alert("Gagal update status: " + err.message);
+    }
+  };
+
+  const handleAddStaffNoteSubmit = async (e) => {
     e.preventDefault();
     if (!noteText.trim() || !selectedTicket) return;
 
     const nowStr = new Date().toLocaleString("id-ID", { dateStyle: 'short', timeStyle: 'short' }) + " WIB";
-    const updated = tickets.map(t => {
-      if (t.ticketId === selectedTicket.ticketId) {
-        const newNoteObj = {
-          time: nowStr,
-          staffName: "Front Desk Staf",
-          text: noteText
-        };
-        return {
-          ...t,
-          notes: [...(t.notes || []), newNoteObj]
-        };
-      }
-      return t;
-    });
+    const newNoteObj = {
+      time: nowStr,
+      staffName: "Front Desk Staf",
+      text: noteText
+    };
+    const newNotes = [...(selectedTicket.notes || []), newNoteObj];
 
-    setTickets(updated);
-    localStorage.setItem("hotelify_tickets", JSON.stringify(updated));
+    try {
+      const { error } = await supabase
+        .from("helpdesk_tickets")
+        .update({ notes: newNotes })
+        .eq("id", selectedTicket.ticketId);
+      if (error) throw error;
 
-    const newSelected = updated.find(t => t.ticketId === selectedTicket.ticketId);
-    setSelectedTicket(newSelected);
-    setNoteText("");
+      await fetchTickets();
+
+      setSelectedTicket(prev => prev ? { ...prev, notes: newNotes } : null);
+      setNoteText("");
+    } catch (err) {
+      console.error("Gagal menambahkan catatan staff:", err);
+      alert("Gagal menambahkan catatan: " + err.message);
+    }
   };
 
   // 7. COMPUTES & FILTERS

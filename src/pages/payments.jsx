@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { 
   FaFileInvoiceDollar, 
   FaMoneyBillWave, 
@@ -16,6 +16,7 @@ import {
   FaHotel,
   FaExclamationTriangle
 } from "react-icons/fa";
+import { supabase } from "../lib/supabase";
 
 // Mengambil data reservasi awal untuk inisialisasi invoices
 import { reservations } from "../data/reservations";
@@ -40,132 +41,97 @@ const formatRupiah = (num) => {
 export default function Payments() {
   const todayStr = "2026-06-14"; // Hari audit simulasi finansial
 
-  // 1. INITIALIZE DATA INVOICES
-  const getInitialInvoices = () => {
-    const saved = localStorage.getItem("hotelify_invoices");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error("Gagal memuat invoice dari localStorage", e);
-      }
-    }
-
-    // Buat invoices secara otomatis dari data reservasi
-    const savedReservations = localStorage.getItem("hotelify_reservations");
-    const activeReservations = savedReservations ? JSON.parse(savedReservations) : reservations;
-
-    return activeReservations.map((res, i) => {
-      const nights = getStayNights(res.checkIn, res.checkOut);
-      const totalAmount = res.totalPayment;
-      const pricePerNight = Math.round(totalAmount / nights);
-      
-      let paymentStatus = "Belum Bayar";
-      let amountPaid = 0;
-      
-      // Sinkronisasi status bayar dengan status reservasi agar realistis
-      if (res.status === "Check-out") {
-        paymentStatus = "Lunas";
-        amountPaid = totalAmount;
-      } else if (res.status === "Check-in") {
-        paymentStatus = "DP Terbayar";
-        amountPaid = Math.round(totalAmount * 0.4); // 40% Down Payment
-      } else if (res.status === "Booked") {
-        if (i % 2 === 0) {
-          paymentStatus = "DP Terbayar";
-          amountPaid = Math.round(totalAmount * 0.3); // 30% Down Payment
-        } else {
-          paymentStatus = "Belum Bayar";
-          amountPaid = 0;
-        }
-      } else if (res.status === "Dibatalkan") {
-        paymentStatus = "Belum Bayar";
-        amountPaid = 0;
-      }
-
-      return {
-        invoiceId: `INV-20260614-${5000 + i}`,
-        bookingId: res.bookingId,
-        guestName: res.guestName,
-        roomNumber: res.roomNumber,
-        roomType: res.roomType,
-        checkIn: res.checkIn,
-        checkOut: res.checkOut,
-        nights,
-        pricePerNight,
-        totalAmount,
-        amountPaid,
-        balance: totalAmount - amountPaid,
-        paymentStatus
-      };
-    });
-  };
-
-  // 2. INITIALIZE TRANSACTIONS
-  const getInitialTransactions = () => {
-    const saved = localStorage.getItem("hotelify_transactions");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error("Gagal memuat transaksi", e);
-      }
-    }
-
-    // Default mock data transaksi hari ini (14 Jun 2026) dan kemarin
-    return [
-      {
-        transactionId: "TXN-9001",
-        invoiceId: "INV-20260614-5000",
-        bookingId: "BOK-5000",
-        guestName: "Vera Zakia",
-        amount: 550000,
-        method: "Transfer Bank",
-        time: "14 Jun 2026, 15:45 WIB"
-      },
-      {
-        transactionId: "TXN-9002",
-        invoiceId: "INV-20260614-5001",
-        bookingId: "BOK-5001",
-        guestName: "John Doe",
-        amount: 300000,
-        method: "Kartu Kredit",
-        time: "14 Jun 2026, 10:15 WIB"
-      },
-      {
-        transactionId: "TXN-9003",
-        invoiceId: "INV-20260614-5002",
-        bookingId: "BOK-5002",
-        guestName: "Siti Aminah",
-        amount: 675000,
-        method: "Tunai",
-        time: "14 Jun 2026, 09:40 WIB"
-      },
-      {
-        transactionId: "TXN-9004",
-        invoiceId: "INV-20260614-5008",
-        bookingId: "BOK-5008",
-        guestName: "Yuki Tanaka",
-        amount: 1500000,
-        method: "OTA Payment",
-        time: "14 Jun 2026, 12:20 WIB"
-      },
-      {
-        transactionId: "TXN-9005",
-        invoiceId: "INV-20260614-5004",
-        bookingId: "BOK-5004",
-        guestName: "Budi Santoso",
-        amount: 800000,
-        method: "Transfer Bank",
-        time: "13 Jun 2026, 11:30 WIB"
-      }
-    ];
-  };
-
-  // States
-  const [invoices, setInvoices] = useState(getInitialInvoices);
-  const [transactions, setTransactions] = useState(getInitialTransactions);
+  const [invoices, setInvoices] = useState([]);
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("outstanding"); // "outstanding" | "history" | "invoices"
+
+  const fetchInvoices = async () => {
+    try {
+      const { data: dbRes, error } = await supabase
+        .from("reservations")
+        .select("*, profiles(*), rooms(*)")
+        .order("check_in", { ascending: false });
+      if (error) throw error;
+
+      const mappedInvoices = dbRes.map((res, i) => {
+        const checkInDate = new Date(res.check_in);
+        const checkOutDate = new Date(res.check_out);
+        const nights = Math.max(1, Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)));
+        const totalAmount = Number(res.total_price);
+        const pricePerNight = Math.round(totalAmount / nights);
+
+        let paymentStatus = "Belum Bayar";
+        let amountPaid = 0;
+
+        if (res.status === "checked_out") {
+          paymentStatus = "Lunas";
+          amountPaid = totalAmount;
+        } else if (res.status === "checked_in") {
+          paymentStatus = "DP Terbayar";
+          amountPaid = Math.round(totalAmount * 0.4);
+        } else if (res.status === "confirmed") {
+          paymentStatus = "DP Terbayar";
+          amountPaid = Math.round(totalAmount * 0.3);
+        }
+
+        return {
+          invoiceId: `INV-${res.id.substring(0, 8).toUpperCase()}`,
+          bookingId: res.id,
+          guestName: res.profiles?.full_name || "Tamu",
+          roomNumber: res.rooms?.room_number || "",
+          roomType: res.rooms?.room_type || "Deluxe",
+          checkIn: res.check_in,
+          checkOut: res.check_out,
+          nights,
+          pricePerNight,
+          totalAmount,
+          amountPaid,
+          balance: totalAmount - amountPaid,
+          paymentStatus
+        };
+      });
+      setInvoices(mappedInvoices);
+    } catch (err) {
+      console.error("Gagal memuat invoices:", err);
+    }
+  };
+
+  const fetchTransactions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("financial_transactions")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+
+      const formatted = data.map(t => {
+        const dt = new Date(t.created_at);
+        const timeStr = dt.toLocaleDateString("id-ID", { day: 'numeric', month: 'short', year: 'numeric' }) + `, ${dt.toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit' })} WIB`;
+        
+        return {
+          transactionId: `TXN-${t.id.substring(0, 8).toUpperCase()}`,
+          invoiceId: t.description?.split(" ").pop() || "INV-UNK",
+          guestName: "Tamu",
+          amount: Number(t.amount),
+          method: t.payment_method,
+          time: timeStr
+        };
+      });
+      setTransactions(formatted);
+    } catch (err) {
+      console.error("Gagal memuat transaksi:", err);
+    }
+  };
+
+  useEffect(() => {
+    const initData = async () => {
+      setLoading(true);
+      await Promise.all([fetchInvoices(), fetchTransactions()]);
+      setLoading(false);
+    };
+    initData();
+  }, []);
 
   // Filter states
   const [searchQuery, setSearchQuery] = useState("");
@@ -190,7 +156,7 @@ export default function Payments() {
   };
 
   // 3. EVENT HANDLERS
-  const handleRecordPaymentSubmit = (e) => {
+  const handleRecordPaymentSubmit = async (e) => {
     e.preventDefault();
     if (!paymentTargetInvoice) return;
 
@@ -205,51 +171,33 @@ export default function Payments() {
       return;
     }
 
-    const nextAmountPaid = paymentTargetInvoice.amountPaid + inputNum;
-    const nextBalance = paymentTargetInvoice.totalAmount - nextAmountPaid;
-    let nextStatus = "DP Terbayar";
-    if (nextBalance <= 0) {
-      nextStatus = "Lunas";
+    try {
+      // 1. Insert transaction to DB
+      const { error: txError } = await supabase
+        .from("financial_transactions")
+        .insert([{
+          type: "income",
+          amount: inputNum,
+          category: "Kamar",
+          description: `Pembayaran invoice ${paymentTargetInvoice.invoiceId}`,
+          payment_method: payMethod
+        }]);
+      if (txError) throw txError;
+
+      // 2. Fetch fresh invoices & transactions
+      await fetchInvoices();
+      await fetchTransactions();
+
+      showToast(`Sukses mencatat pembayaran Rp ${inputNum.toLocaleString('id-ID')} untuk ${paymentTargetInvoice.guestName}`);
+      
+      // Close modal
+      setPaymentTargetInvoice(null);
+      setPayAmount("");
+      setPayNotes("");
+    } catch (err) {
+      console.error("Gagal memproses pembayaran:", err);
+      alert("Gagal memproses pembayaran: " + err.message);
     }
-
-    // Update invoices
-    const updatedInvoices = invoices.map(inv => {
-      if (inv.invoiceId === paymentTargetInvoice.invoiceId) {
-        return {
-          ...inv,
-          amountPaid: nextAmountPaid,
-          balance: nextBalance,
-          paymentStatus: nextStatus
-        };
-      }
-      return inv;
-    });
-    setInvoices(updatedInvoices);
-    localStorage.setItem("hotelify_invoices", JSON.stringify(updatedInvoices));
-
-    // Record transaction log
-    const now = new Date();
-    const timeStr = now.toLocaleDateString("id-ID", { day: 'numeric', month: 'short', year: 'numeric' }) + `, ${now.toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit' })} WIB`;
-    const newTxn = {
-      transactionId: `TXN-${9000 + transactions.length + 1}`,
-      invoiceId: paymentTargetInvoice.invoiceId,
-      bookingId: paymentTargetInvoice.bookingId,
-      guestName: paymentTargetInvoice.guestName,
-      amount: inputNum,
-      method: payMethod,
-      time: timeStr
-    };
-
-    const updatedTxns = [newTxn, ...transactions];
-    setTransactions(updatedTxns);
-    localStorage.setItem("hotelify_transactions", JSON.stringify(updatedTxns));
-
-    showToast(`Sukses mencatat pembayaran Rp ${inputNum.toLocaleString('id-ID')} untuk ${paymentTargetInvoice.guestName}`);
-    
-    // Close modal
-    setPaymentTargetInvoice(null);
-    setPayAmount("");
-    setPayNotes("");
   };
 
   const handlePrintTrigger = () => {

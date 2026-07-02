@@ -63,49 +63,27 @@ export default function Register() {
         setSuccess("");
 
         try {
-            // Check for duplicate email
-            const { data: existingAdmin, error: queryError } = await supabase
-                .from("Admin")
-                .select("id")
-                .eq("email", form.email)
-                .maybeSingle();
+            const { data, error: signUpError } = await supabase.auth.signUp({
+                email: form.email,
+                password: form.password,
+                options: {
+                    data: {
+                        full_name: form.username,
+                    }
+                }
+            });
 
-            if (queryError) {
-                console.error("Query error:", queryError);
-                setError("Terjadi kesalahan koneksi. Silakan coba lagi.");
+            if (signUpError) {
+                console.error("Sign up error:", signUpError);
+                setError(signUpError.message);
                 setLoading(false);
                 return;
             }
 
-            if (existingAdmin) {
-                setError("Email sudah terdaftar. Gunakan email lain.");
-                setLoading(false);
-                return;
-            }
-
-            // Insert new admin
-            const { error: insertError } = await supabase.from("Admin").insert([
-                {
-                    username: form.username,
-                    email: form.email,
-                    password: form.password,
-                    status: "active",
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
-                },
-            ]);
-
-            if (insertError) {
-                console.error("Insert error:", insertError);
-                setError("Gagal mendaftarkan akun. Silakan coba lagi.");
-                setLoading(false);
-                return;
-            }
-
-            setSuccess("Akun berhasil dibuat! Mengalihkan...");
+            setSuccess("Akun berhasil dibuat! Silakan cek email Anda (jika konfirmasi email aktif) atau login.");
             setTimeout(() => {
                 navigate("/login");
-            }, 1200);
+            }, 1500);
         } catch (err) {
             console.error(err);
             setError("Terjadi kesalahan. Silakan coba lagi.");

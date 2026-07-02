@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   FaChartLine, 
@@ -16,9 +16,7 @@ import {
   FaDoorOpen
 } from 'react-icons/fa';
 
-// Import fallback dummy data
-import { rooms } from '../data/rooms';
-import { reservations } from '../data/reservations';
+import { supabase } from '../lib/supabase';
 
 // Indonesian naming constants
 const INDONESIAN_DAYS = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
@@ -62,71 +60,38 @@ export default function Forecasting() {
   const navigate = useNavigate();
   const todayStr = "2026-06-14"; // Hari audit simulasi sistem CRM
 
-  // 1. INTEGRASI LOCAL STORAGE (ROOMS & RESERVATIONS)
-  const [roomsList] = useState(() => {
-    const saved = localStorage.getItem("hotelify_rooms");
-    if (saved) {
+  // 1. INTEGRASI SUPABASE (ROOMS & RESERVATIONS)
+  const [roomsList, setRoomsList] = useState([]);
+  const [resList, setResList] = useState([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
       try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error("Gagal memuat data kamar di forecasting", e);
+        const { data: rmData, error: rmError } = await supabase.from('rooms').select('*');
+        if (rmError) throw rmError;
+        setRoomsList(rmData || []);
+
+        const { data: resData, error: resError } = await supabase.from('reservations').select('*');
+        if (resError) throw resError;
+        
+        // Map Supabase fields to the format expected by forecasting component
+        const mappedRes = (resData || []).map(r => ({
+          ...r,
+          status: r.status === 'confirmed' ? 'Dikonfirmasi' 
+                : r.status === 'pending' ? 'Menunggu Konfirmasi'
+                : r.status === 'checked_in' ? 'Check-in'
+                : r.status === 'checked_out' ? 'Check-out'
+                : 'Dibatalkan',
+          checkIn: r.check_in,
+          checkOut: r.check_out
+        }));
+        setResList(mappedRes);
+      } catch (err) {
+        console.error("Gagal memuat data di forecasting:", err);
       }
-    }
-    return rooms;
-  });
-
-  const [resList] = useState(() => {
-    const saved = localStorage.getItem("hotelify_reservations");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error("Gagal memuat data reservasi di forecasting", e);
-      }
-    }
-    
-    // Fallback & mapping standard seperti reservations.jsx agar sinkron
-    const mapped = reservations.map((r, idx) => {
-      let standardType = "Deluxe";
-      if (r.roomType.includes("Single")) standardType = "Single";
-      else if (r.roomType.includes("Suite")) standardType = "Suite";
-      else if (r.roomType.includes("Double")) standardType = "Double";
-
-      let checkIn = r.checkIn;
-      let checkOut = r.checkOut;
-      let status = r.status === "Check-in" ? "Check-in" : r.status === "Booked" ? "Menunggu Konfirmasi" : r.status === "Check-out" ? "Check-out" : "Dibatalkan";
-      let additionalServiceFee = 0;
-
-      if (idx % 5 === 0) {
-        checkIn = todayStr;
-        checkOut = "2026-06-17";
-        status = idx % 2 === 0 ? "Dikonfirmasi" : "Menunggu Konfirmasi";
-      } else if (idx % 5 === 1) {
-        checkIn = "2026-06-12";
-        checkOut = todayStr;
-        status = "Check-in";
-        additionalServiceFee = 120000 + (idx * 15000);
-      }
-
-      return {
-        ...r,
-        roomType: standardType,
-        identityNumber: `327305140689000${idx + 1}`.substring(0, 16),
-        phone: `0812-9876-543${idx}`,
-        email: `${r.guestName.toLowerCase().replace(/\s+/g, '')}@example.com`,
-        adults: 2,
-        children: idx % 3 === 0 ? 1 : 0,
-        specialRequest: idx % 5 === 0 ? "Minta kamar bebas asap rokok dan bantal tambahan." : "",
-        bookingSource: ["Website", "Telepon", "Walk-in", "OTA"][idx % 4],
-        status,
-        checkIn,
-        checkOut,
-        additionalServiceFee
-      };
-    });
-    localStorage.setItem("hotelify_reservations", JSON.stringify(mapped));
-    return mapped;
-  });
+    };
+    fetchData();
+  }, []);
 
   // 2. STATE INTERAKTIF
   const [searchQuery, setSearchQuery] = useState("");

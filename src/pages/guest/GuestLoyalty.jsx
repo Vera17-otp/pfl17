@@ -1,8 +1,9 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaArrowLeft, FaGift, FaCrown, FaStar, FaCoffee, FaBed, FaClock, FaLock, FaUtensils, FaTicketAlt } from "react-icons/fa";
 import { useGuestAuth } from "../../context/GuestAuthContext";
 import PremiumLockOverlay from "../../components/ui/PremiumLockOverlay";
+import { supabase } from "../../lib/supabase";
 
 const NAVY = "#1E3A5F";
 const GOLD = "#C9A84C";
@@ -20,14 +21,6 @@ const REWARDS = [
   { id: 7, title: "Late Check-out (15:00)", pts: 500, icon: <FaClock />, desc: "Perpanjang waktu bersantai Anda hingga jam 3 sore.", isPremiumOnly: true }
 ];
 
-const RAW_HISTORY = [
-  { date: "16 Jun 2026", month: "06", year: "2026", desc: "Bonus Survei Kepuasan", pts: "+50", type: "earn" },
-  { date: "16 Jun 2026", month: "06", year: "2026", desc: "Menginap di Deluxe Room (2 Malam)", pts: "+400", type: "earn" },
-  { date: "10 Feb 2026", month: "02", year: "2026", desc: "Menginap di Executive Suite (2 Malam)", pts: "+800", type: "earn" },
-  { date: "10 Feb 2026", month: "02", year: "2026", desc: "Tukar Poin - Late Check-out", pts: "-500", type: "spend" },
-  { date: "05 Jan 2026", month: "01", year: "2026", desc: "Menginap di Standard Room (1 Malam)", pts: "+150", type: "earn" }
-];
-
 export default function GuestLoyalty() {
   const navigate = useNavigate();
   const { profile } = useGuestAuth();
@@ -39,6 +32,29 @@ export default function GuestLoyalty() {
   const [monthFilter, setMonthFilter] = useState("all");
   const [showTierModal, setShowTierModal] = useState(false);
   const [newTier, setNewTier] = useState("");
+
+  const [historyList, setHistoryList] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchPointsHistory() {
+      if (!profile?.id) return;
+      try {
+        const { data, error } = await supabase
+          .from("point_transactions")
+          .select("*")
+          .eq("profile_id", profile.id)
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        setHistoryList(data || []);
+      } catch (err) {
+        console.error("Gagal memuat histori poin:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchPointsHistory();
+  }, [profile?.id]);
 
   // Tier calculation
   let currentTier = "Basic";
@@ -86,9 +102,27 @@ export default function GuestLoyalty() {
   };
 
   const filteredHistory = useMemo(() => {
-    if (monthFilter === "all") return RAW_HISTORY;
-    return RAW_HISTORY.filter(h => h.month === monthFilter);
-  }, [monthFilter]);
+    const formatted = historyList.map(h => {
+      const dt = new Date(h.created_at);
+      const day = dt.getDate();
+      const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
+      const monthLabel = months[dt.getMonth()];
+      const year = dt.getFullYear();
+      const monthNum = String(dt.getMonth() + 1).padStart(2, "0");
+
+      return {
+        date: `${day} ${monthLabel} ${year}`,
+        month: monthNum,
+        year: String(year),
+        desc: h.note || (h.type === "earn" ? "Dapatkan Poin" : "Penukaran Poin"),
+        pts: (h.type === "earn" ? "+" : "-") + h.points,
+        type: h.type === "earn" ? "earn" : "spend"
+      };
+    });
+
+    if (monthFilter === "all") return formatted;
+    return formatted.filter(h => h.month === monthFilter);
+  }, [historyList, monthFilter]);
 
   const canAfford = (requiredPoints) => {
     return (userPoints ?? 0) >= requiredPoints;

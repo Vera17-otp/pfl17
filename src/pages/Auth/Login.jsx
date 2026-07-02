@@ -48,27 +48,53 @@ export default function Login() {
         setSuccess("");
 
         try {
-            const { data, error: queryError } = await supabase
-                .from("Admin")
-                .select("*")
-                .eq("email", dataForm.email)
-                .eq("password", dataForm.password)
-                .eq("status", "active")
-                .single();
+            const { data, error: authError } = await supabase.auth.signInWithPassword({
+                email: dataForm.email,
+                password: dataForm.password,
+            });
 
-            if (queryError || !data) {
-                setError("Email atau password salah, atau akun tidak aktif.");
+            if (authError || !data.user) {
+                setError(authError ? "Email atau password salah." : "Login gagal.");
                 setLoading(false);
                 return;
             }
 
-            // Save admin session to localStorage
-            localStorage.setItem("adminSession", JSON.stringify(data));
-            setSuccess("Login berhasil! Mengalihkan...");
+            // Fetch role from profiles
+            const { data: profile, error: profileError } = await supabase
+                .from("profiles")
+                .select("*, member_tiers(*)")
+                .eq("id", data.user.id)
+                .single();
 
-            setTimeout(() => {
-                navigate("/");
-            }, 800);
+            if (profileError || !profile) {
+                setError("Profil tidak ditemukan. Hubungi administrator.");
+                await supabase.auth.signOut();
+                setLoading(false);
+                return;
+            }
+
+            if (profile.role === "admin") {
+                // Save admin session to localStorage
+                localStorage.setItem("adminSession", JSON.stringify({
+                    id: profile.id,
+                    email: dataForm.email,
+                    status: "active",
+                    role: "admin",
+                    full_name: profile.full_name,
+                }));
+                setSuccess("Login Admin berhasil! Mengalihkan...");
+                setTimeout(() => {
+                    navigate("/");
+                }, 800);
+            } else {
+                // Save member session to localStorage
+                localStorage.setItem("memberSession", JSON.stringify(data.session));
+                localStorage.setItem("memberData", JSON.stringify(profile));
+                setSuccess("Login Member berhasil! Mengalihkan...");
+                setTimeout(() => {
+                    navigate("/guest/dashboard", { replace: true });
+                }, 800);
+            }
         } catch (err) {
             setError("Terjadi kesalahan. Silakan coba lagi.");
             setLoading(false);

@@ -22,6 +22,8 @@ import {
   FaFileInvoice
 } from "react-icons/fa";
 
+import { supabase } from "../lib/supabase";
+
 // Import data asli
 import { rooms as initialRooms } from "../data/rooms";
 import { reservations } from "../data/reservations";
@@ -36,18 +38,9 @@ const formatRupiah = (val) => {
 };
 
 export default function Rooms() {
-  // 1. STATE INITIALIZATION (LocalStorage Integration)
-  const [roomsList, setRoomsList] = useState(() => {
-    const saved = localStorage.getItem("hotelify_rooms");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error("Gagal memuat kamar dari localStorage", e);
-      }
-    }
-    return initialRooms;
-  });
+  // 1. STATE INITIALIZATION (Supabase Integration)
+  const [roomsList, setRoomsList] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const [resList] = useState(() => {
     const saved = localStorage.getItem("hotelify_reservations");
@@ -61,10 +54,37 @@ export default function Rooms() {
     return reservations;
   });
 
-  // Save to localStorage when changed
+  const fetchRooms = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("rooms")
+        .select("*");
+      if (error) throw error;
+      
+      const formatted = data.map(rm => ({
+        roomId: rm.id,
+        roomNumber: rm.room_number,
+        type: rm.room_type,
+        price: Number(rm.price_per_night),
+        capacity: rm.capacity,
+        status: rm.status.charAt(0).toUpperCase() + rm.status.slice(1), // e.g. "available" -> "Available"
+        description: rm.description,
+        floor: rm.floor,
+        facilities: rm.facilities || [],
+        image: rm.image
+      }));
+      setRoomsList(formatted);
+    } catch (err) {
+      console.error("Error fetching rooms:", err);
+      showToast("Gagal memuat data kamar dari database.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    localStorage.setItem("hotelify_rooms", JSON.stringify(roomsList));
-  }, [roomsList]);
+    fetchRooms();
+  }, []);
 
   // Toast & Alert State
   const [toastMessage, setToastMessage] = useState("");
@@ -171,29 +191,52 @@ export default function Rooms() {
   };
 
   // 6. HOUSEKEEPING / STATUS OVERRIDES
-  const handleUpdateRoomStatus = (roomId, newStatus) => {
-    const updated = roomsList.map(rm => {
-      if (rm.roomId === roomId) {
-        return { ...rm, status: newStatus };
+  const handleUpdateRoomStatus = async (roomId, newStatus) => {
+    const dbStatus = newStatus.toLowerCase(); // Map "Available" -> "available", "Dirty" -> "dirty", etc.
+    try {
+      const { error } = await supabase
+        .from("rooms")
+        .update({ status: dbStatus })
+        .eq("id", roomId);
+      if (error) throw error;
+
+      const updated = roomsList.map(rm => {
+        if (rm.roomId === roomId) {
+          return { ...rm, status: newStatus };
+        }
+        return rm;
+      });
+      setRoomsList(updated);
+      showToast(`Status Kamar berhasil diubah menjadi ${newStatus === "Available" ? "Tersedia (Cleaned)" : newStatus}!`);
+      
+      // Update selectedRoom state if modal is open
+      if (selectedRoom && selectedRoom.roomId === roomId) {
+        setSelectedRoom(prev => ({ ...prev, status: newStatus }));
       }
-      return rm;
-    });
-    setRoomsList(updated);
-    showToast(`Status Kamar berhasil diubah menjadi ${newStatus === "Available" ? "Tersedia (Cleaned)" : newStatus}!`);
-    
-    // Update selectedRoom state if modal is open
-    if (selectedRoom && selectedRoom.roomId === roomId) {
-      setSelectedRoom(prev => ({ ...prev, status: newStatus }));
+    } catch (err) {
+      console.error("Error updating room status:", err);
+      showToast("Gagal mengubah status kamar di database.");
     }
   };
 
   // Delete Room
-  const handleDeleteRoom = (roomId, roomNumber) => {
+  const handleDeleteRoom = async (roomId, roomNumber) => {
     if (window.confirm(`Apakah Anda yakin ingin menghapus kamar #${roomNumber}?`)) {
-      const updated = roomsList.filter(rm => rm.roomId !== roomId);
-      setRoomsList(updated);
-      setSelectedRoom(null);
-      showToast(`Kamar #${roomNumber} berhasil dihapus dari database aset!`);
+      try {
+        const { error } = await supabase
+          .from("rooms")
+          .delete()
+          .eq("id", roomId);
+        if (error) throw error;
+
+        const updated = roomsList.filter(rm => rm.roomId !== roomId);
+        setRoomsList(updated);
+        setSelectedRoom(null);
+        showToast(`Kamar #${roomNumber} berhasil dihapus dari database aset!`);
+      } catch (err) {
+        console.error("Error deleting room:", err);
+        showToast("Gagal menghapus kamar dari database.");
+      }
     }
   };
 
@@ -248,7 +291,7 @@ export default function Rooms() {
     setSelectedRoom(null); // Close detail modal
   };
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
     if (!formRoomNumber.trim() || !formPrice) {
       alert("Harap isi semua kolom wajib!");
@@ -272,38 +315,81 @@ export default function Rooms() {
     const defaultImage = "https://images.unsplash.com/photo-1611892440504-42a792e24d32?q=80&w=2070&auto=format&fit=crop";
 
     if (modalMode === "add") {
-      const newRoom = {
-        roomId: `RM-${Date.now()}`,
-        roomNumber: formRoomNumber.trim(),
-        type: formType,
-        floor: parseInt(formFloor),
-        capacity: parseInt(formCapacity),
-        facilities: activeFacilities,
-        price: priceNum,
-        status: formStatus,
-        image: formImage.trim() || defaultImage
-      };
-      setRoomsList(prev => [...prev, newRoom]);
-      showToast(`Kamar #${newRoom.roomNumber} baru berhasil ditambahkan!`);
-    } else {
-      const updated = roomsList.map(rm => {
-        if (rm.roomId === editingRoom.roomId) {
-          return {
-            ...rm,
-            roomNumber: formRoomNumber.trim(),
-            type: formType,
+      try {
+        const { data, error } = await supabase
+          .from("rooms")
+          .insert([{
+            room_number: formRoomNumber.trim(),
+            room_type: formType,
             floor: parseInt(formFloor),
             capacity: parseInt(formCapacity),
             facilities: activeFacilities,
-            price: priceNum,
-            status: formStatus,
-            image: formImage.trim() || rm.image
-          };
-        }
-        return rm;
-      });
-      setRoomsList(updated);
-      showToast(`Data Kamar #${formRoomNumber} berhasil diperbarui!`);
+            price_per_night: priceNum,
+            status: formStatus.toLowerCase(),
+            image: formImage.trim() || defaultImage
+          }])
+          .select()
+          .single();
+        if (error) throw error;
+
+        const newRoom = {
+          roomId: data.id,
+          roomNumber: data.room_number,
+          type: data.room_type,
+          floor: data.floor,
+          capacity: data.capacity,
+          facilities: data.facilities || [],
+          price: Number(data.price_per_night),
+          status: data.status.charAt(0).toUpperCase() + data.status.slice(1),
+          image: data.image
+        };
+        setRoomsList(prev => [...prev, newRoom]);
+        showToast(`Kamar #${newRoom.roomNumber} baru berhasil ditambahkan!`);
+      } catch (err) {
+        console.error("Error adding room:", err);
+        alert(`Gagal menyimpan kamar ke database: ${err.message}`);
+        return;
+      }
+    } else {
+      try {
+        const { error } = await supabase
+          .from("rooms")
+          .update({
+            room_number: formRoomNumber.trim(),
+            room_type: formType,
+            floor: parseInt(formFloor),
+            capacity: parseInt(formCapacity),
+            facilities: activeFacilities,
+            price_per_night: priceNum,
+            status: formStatus.toLowerCase(),
+            image: formImage.trim() || editingRoom.image
+          })
+          .eq("id", editingRoom.roomId);
+        if (error) throw error;
+
+        const updated = roomsList.map(rm => {
+          if (rm.roomId === editingRoom.roomId) {
+            return {
+              ...rm,
+              roomNumber: formRoomNumber.trim(),
+              type: formType,
+              floor: parseInt(formFloor),
+              capacity: parseInt(formCapacity),
+              facilities: activeFacilities,
+              price: priceNum,
+              status: formStatus,
+              image: formImage.trim() || rm.image
+            };
+          }
+          return rm;
+        });
+        setRoomsList(updated);
+        showToast(`Data Kamar #${formRoomNumber} berhasil diperbarui!`);
+      } catch (err) {
+        console.error("Error updating room:", err);
+        alert(`Gagal menyimpan perubahan kamar ke database: ${err.message}`);
+        return;
+      }
     }
 
     setShowAddEditModal(false);
