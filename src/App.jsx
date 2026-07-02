@@ -32,6 +32,7 @@ const Forecasting = lazy(() => import("./pages/forecasting"));
 const Marketing = lazy(() => import("./pages/marketing"));
 const Feedback = lazy(() => import("./pages/feedback"));
 const Tasks = lazy(() => import("./pages/tasks"));
+const Services = lazy(() => import("./pages/services"));
 
 // Pages - Admin Members CRUD
 const AdminMembers = lazy(() => import("./pages/admin/Members"));
@@ -102,6 +103,7 @@ function App() {
         "/admin/dashboard",
         "/admin/members",
         "/dashboard",
+        "/services",
     ];
 
     const isErrorPage = !validRoutes.includes(location.pathname)
@@ -157,6 +159,7 @@ function App() {
                     <Route path="/marketing" element={<Marketing />} />
                     <Route path="/feedback" element={<Feedback />} />
                     <Route path="/tasks" element={<Tasks />} />
+                    <Route path="/services" element={<Services />} />
                 </Route>
 
                 {/* ─── GUEST AUTH (Login / Register / Forgot) ─────────────────── */}

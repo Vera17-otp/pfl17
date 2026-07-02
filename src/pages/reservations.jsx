@@ -89,6 +89,7 @@ export default function Reservations() {
   // 1. STATE UTAMA (Supabase Integration)
   const [resList, setResList] = useState([]);
   const [roomsList, setRoomsList] = useState([]);
+  const [servicesList, setServicesList] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // State Riwayat Status (Lini Masa Audit Trail) - local storage fallback
@@ -139,6 +140,16 @@ export default function Reservations() {
       }));
       setRoomsList(formattedRooms);
 
+      // 1b. Fetch Services
+      const { data: dbServices, error: servicesError } = await supabase
+        .from("services")
+        .select("*")
+        .eq("is_active", true)
+        .order("name");
+      if (!servicesError && dbServices) {
+        setServicesList(dbServices);
+      }
+
       // 2. Fetch Reservations
       const { data: dbRes, error: resError } = await supabase
         .from("reservations")
@@ -165,7 +176,7 @@ export default function Reservations() {
           status: statusLabel,
           totalPayment: Number(res.total_price),
           pointsEarned: res.points_earned,
-          additionalServiceFee: 0
+          additionalServiceFee: 0 // Ideally this should be fetched from reservation_services sum
         };
       });
 
@@ -215,6 +226,7 @@ export default function Reservations() {
   const [formRequest, setFormRequest] = useState("");
   const [formSource, setFormSource] = useState("Website");
   const [formRoomNumber, setFormRoomNumber] = useState("");
+  const [formSelectedServices, setFormSelectedServices] = useState({}); // { serviceId: quantity }
 
   const [showRoomChanger, setShowRoomChanger] = useState(false);
 
@@ -269,8 +281,13 @@ export default function Reservations() {
   }, [formRoomNumber, roomsList]);
 
   const totalCostInForm = useMemo(() => {
-    return selectedRoomPrice * stayNightsInForm;
-  }, [selectedRoomPrice, stayNightsInForm]);
+    let serviceCost = 0;
+    Object.entries(formSelectedServices).forEach(([svcId, qty]) => {
+      const svc = servicesList.find(s => s.id === svcId);
+      if (svc && qty > 0) serviceCost += svc.price * qty;
+    });
+    return (selectedRoomPrice * stayNightsInForm) + serviceCost;
+  }, [selectedRoomPrice, stayNightsInForm, formSelectedServices, servicesList]);
 
   // 4. PENYARINGAN & PENCARIAN RESERVASI (TAB 1: MEJA RESERVASI)
   const filteredReservations = useMemo(() => {
@@ -389,7 +406,7 @@ export default function Reservations() {
       }
 
       // Insert reservation
-      const { error: insertError } = await supabase
+      const { data: resData, error: insertError } = await supabase
         .from("reservations")
         .insert([{
           guest_id: guestId,
@@ -398,9 +415,31 @@ export default function Reservations() {
           check_out: formCheckOut,
           status: "pending",
           total_price: totalCostInForm
-        }]);
+        }])
+        .select()
+        .single();
 
       if (insertError) throw insertError;
+
+      // Insert extra services
+      const extraServicesToInsert = Object.entries(formSelectedServices)
+        .filter(([_, qty]) => qty > 0)
+        .map(([svcId, qty]) => {
+          const svc = servicesList.find(s => s.id === svcId);
+          return {
+            reservation_id: resData.id,
+            service_id: svcId,
+            quantity: qty,
+            price_at_booking: svc.price
+          };
+        });
+
+      if (extraServicesToInsert.length > 0) {
+        const { error: serviceInsertError } = await supabase
+          .from("reservation_services")
+          .insert(extraServicesToInsert);
+        if (serviceInsertError) throw serviceInsertError;
+      }
 
       // Fetch fresh data
       await fetchData();
@@ -412,6 +451,7 @@ export default function Reservations() {
       setFormEmail("");
       setFormRoomNumber("");
       setFormRequest("");
+      setFormSelectedServices({});
 
       setViewMode("list");
       setAlertMessage(`Reservasi Baru Berhasil Dibuat!`);
@@ -1028,17 +1068,48 @@ export default function Reservations() {
                               <strong style={{ color: 'var(--text-main)' }}>{formatRupiah(selectedRoomPrice)}</strong>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                              <span>Subtotal ({stayNightsInForm} malam):</span>
-                              <strong style={{ color: 'var(--text-main)' }}>{formatRupiah(totalCostInForm)}</strong>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.05rem', color: 'var(--text-main)', fontWeight: 800, borderTop: '1px solid var(--border-color)', paddingTop: '10px', marginTop: '4px' }}>
-                              <span>Total Estimasi Bayar:</span>
-                              <span style={{ color: 'var(--primary-color)' }}>{formatRupiah(totalCostInForm)}</span>
+                              <span>Subtotal Kamar ({stayNightsInForm} malam):</span>
+                              <strong style={{ color: 'var(--text-main)' }}>{formatRupiah(selectedRoomPrice * stayNightsInForm)}</strong>
                             </div>
                           </div>
                         )}
                       </div>
                     )}
+                  </div>
+
+                  {/* Bagian Layanan Tambahan */}
+                  <div className="table-card" style={{ padding: '24px' }}>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 700, borderBottom: '1px solid var(--border-color)', paddingBottom: '8px', marginBottom: '16px', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <FaCoffee style={{ color: 'var(--primary-color)' }} /> Layanan Tambahan (Opsional)
+                    </h3>
+                    
+                    {servicesList.length === 0 ? (
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Tidak ada layanan tambahan aktif.</div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '180px', overflowY: 'auto' }}>
+                        {servicesList.map(svc => {
+                          const qty = formSelectedServices[svc.id] || 0;
+                          return (
+                            <div key={svc.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
+                              <div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>{svc.name}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{formatRupiah(svc.price)} / pax</div>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <button type="button" onClick={() => setFormSelectedServices(prev => ({ ...prev, [svc.id]: Math.max(0, qty - 1) }))} style={{ width: '28px', height: '28px', borderRadius: '50%', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', backgroundColor: 'var(--bg-color)', color: 'var(--text-main)' }}>-</button>
+                                <span style={{ fontSize: '0.9rem', fontWeight: 700, width: '20px', textAlign: 'center', color: 'var(--text-main)' }}>{qty}</span>
+                                <button type="button" onClick={() => setFormSelectedServices(prev => ({ ...prev, [svc.id]: qty + 1 }))} style={{ width: '28px', height: '28px', borderRadius: '50%', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', backgroundColor: 'var(--bg-color)', color: 'var(--text-main)' }}>+</button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px', marginTop: '16px', display: 'flex', justifyContent: 'space-between', fontSize: '1.05rem', color: 'var(--text-main)', fontWeight: 800 }}>
+                      <span>Total Estimasi Bayar:</span>
+                      <span style={{ color: 'var(--primary-color)' }}>{formatRupiah(totalCostInForm)}</span>
+                    </div>
                   </div>
 
                   <div style={{ display: 'flex', gap: '12px' }}>

@@ -8,6 +8,7 @@ import {
 } from "react-icons/fa";
 import { rooms } from "../../data/rooms";
 import { useGuestAuth } from "../../context/GuestAuthContext";
+import { supabase } from "../../lib/supabase";
 
 // ── Warna brand ───────────────────────────────────────────────────────────────
 const NAVY = "#1E3A5F";
@@ -37,11 +38,13 @@ const FAC_ICONS = {
   Bathtub: <FaBath />, Minibar: <FaGlassMartini />, "Extra Bed": <FaBed />,
 };
 
-const EXTRA_SERVICES = [
-  { id: "breakfast", title: "Sarapan Buffet", desc: "Sarapan sepuasnya untuk 2 orang di Restoran Utama", price: 150000, icon: <FaCoffee /> },
-  { id: "transfer", title: "Airport Transfer", desc: "Layanan antar-jemput dari/ke bandara", price: 250000, icon: <FaCar /> },
-  { id: "decor", title: "Dekorasi Romantis", desc: "Dekorasi kelopak mawar dan handuk angsa di kasur", price: 300000, icon: <FaGift /> },
-];
+// Icon map for extra services (fallback if needed)
+const EXTRA_ICONS = {
+  breakfast: <FaCoffee />,
+  transfer: <FaCar />,
+  decor: <FaGift />,
+  default: <FaCrown />
+};
 
 const REVIEWS = [
   { id: 1, name: "Budi S.", rating: 5, date: "12 Juni 2026", comment: "Sangat nyaman dan bersih. Fasilitas lengkap." },
@@ -77,10 +80,23 @@ export default function GuestRoomDetail() {
   
   // Extras
   const [extras, setExtras] = useState({});
+  const [extraServices, setExtraServices] = useState([]);
   
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [roomId]);
+
+  useEffect(() => {
+    async function fetchServices() {
+      const { data } = await supabase
+        .from("services")
+        .select("*")
+        .eq("is_active", true)
+        .order("name");
+      if (data) setExtraServices(data);
+    }
+    fetchServices();
+  }, []);
 
   if (!room) {
     return <div style={{ padding: "100px", textAlign: "center" }}>Kamar tidak ditemukan.</div>;
@@ -104,7 +120,7 @@ export default function GuestRoomDetail() {
   const isPremium = profile?.isPremium;
   const effectivePrice = isPremium ? room.price * 0.9 : room.price;
   const roomTotal = effectivePrice * nights;
-  const extrasTotal = EXTRA_SERVICES.filter(ex => extras[ex.id]).reduce((sum, ex) => sum + ex.price, 0);
+  const extrasTotal = extraServices.filter(ex => extras[ex.id]).reduce((sum, ex) => sum + Number(ex.price), 0);
   const subtotal = roomTotal + extrasTotal;
   const tax = subtotal * 0.11; // 11% PB1
   const service = subtotal * 0.10; // 10% service
@@ -276,17 +292,17 @@ export default function GuestRoomDetail() {
             {/* Extra Services */}
             <h4 style={{ margin: "0 0 12px", fontSize: "0.9rem", fontWeight: 800, color: NAVY }}>Tambah Layanan Ekstra</h4>
             <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "24px" }}>
-              {EXTRA_SERVICES.map(ex => (
+              {extraServices.map(ex => (
                 <div key={ex.id} onClick={() => toggleExtra(ex.id)} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px", borderRadius: "12px", border: `1px solid ${extras[ex.id] ? GOLD : BORDER}`, backgroundColor: extras[ex.id] ? `${GOLD}10` : "#fff", cursor: "pointer", transition: "all 0.2s" }}>
                   <div style={{ width: "20px", height: "20px", borderRadius: "6px", border: `2px solid ${extras[ex.id] ? GOLD : "#CBD5E1"}`, backgroundColor: extras[ex.id] ? GOLD : "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     {extras[ex.id] && <FaCheckCircle style={{ color: "#fff", fontSize: "0.7rem" }} />}
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2px" }}>
-                      <span style={{ fontSize: "0.85rem", fontWeight: 700, color: NAVY }}>{ex.title}</span>
+                      <span style={{ fontSize: "0.85rem", fontWeight: 700, color: NAVY }}>{ex.name}</span>
                       <span style={{ fontSize: "0.85rem", fontWeight: 700, color: GOLD }}>+{rp(ex.price)}</span>
                     </div>
-                    <div style={{ fontSize: "0.75rem", color: "#6B7280" }}>{ex.desc}</div>
+                    <div style={{ fontSize: "0.75rem", color: "#6B7280" }}>{ex.description || `Tambahkan ${ex.name} untuk pengalaman menginap terbaik`}</div>
                   </div>
                 </div>
               ))}

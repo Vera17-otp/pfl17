@@ -7,6 +7,7 @@ import {
 import { rooms } from "../../data/rooms";
 import { useGuestAuth } from "../../context/GuestAuthContext";
 import PremiumLockOverlay from "../../components/ui/PremiumLockOverlay";
+import { supabase } from "../../lib/supabase";
 
 const NAVY = "#1E3A5F";
 const GOLD = "#C9A84C";
@@ -58,10 +59,25 @@ export default function GuestBooking() {
   const [paymentMethod, setPaymentMethod] = useState("transfer");
   const [proofFile, setProofFile] = useState(null);
   const [bookingRef, setBookingRef] = useState("");
+  
+  // Extra Services
+  const [extraServices, setExtraServices] = useState([]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [step]);
+
+  useEffect(() => {
+    async function fetchServices() {
+      const { data } = await supabase
+        .from("services")
+        .select("*")
+        .eq("is_active", true)
+        .order("name");
+      if (data) setExtraServices(data);
+    }
+    fetchServices();
+  }, []);
 
   if (!room) {
     return <div style={{ padding: "100px", textAlign: "center" }}>Kamar tidak ditemukan.</div>;
@@ -75,14 +91,8 @@ export default function GuestBooking() {
   const roomTotal = room.price * nights;
   
   // Reconstruct extras total based on selected extras ids
-  const EXTRA_SERVICES = [
-    { id: "breakfast", title: "Sarapan Buffet", price: 150000 },
-    { id: "transfer", title: "Airport Transfer", price: 250000 },
-    { id: "decor", title: "Dekorasi Romantis", price: 300000 },
-  ];
-  
-  const extrasList = EXTRA_SERVICES.filter(ex => extras[ex.id]);
-  const extrasTotal = extrasList.reduce((sum, ex) => sum + ex.price, 0);
+  const extrasList = extraServices.filter(ex => extras[ex.id]);
+  const extrasTotal = extrasList.reduce((sum, ex) => sum + Number(ex.price), 0);
   
   const isPremium = guest?.isPremium;
   const memberDiscountAmount = isPremium ? roomTotal * 0.1 : 0;
@@ -264,7 +274,7 @@ export default function GuestBooking() {
       
       {extrasList.map(ex => (
         <div key={ex.id} style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px", fontSize: "0.9rem", color: "#4B5563" }}>
-          <span>Tambahan: {ex.title}</span>
+          <span>Tambahan: {ex.name}</span>
           <span>{rp(ex.price)}</span>
         </div>
       ))}

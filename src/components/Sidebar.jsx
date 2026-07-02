@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { FaChartPie, FaBed, FaCalendarCheck, FaUsers, FaCog, FaChartBar, FaConciergeBell, FaBell, FaFileInvoiceDollar, FaChartLine, FaBullhorn, FaSmile, FaComments, FaTasks } from "react-icons/fa";
+import { FaChartPie, FaBed, FaCalendarCheck, FaUsers, FaCog, FaChartBar, FaConciergeBell, FaBell, FaFileInvoiceDollar, FaChartLine, FaBullhorn, FaSmile, FaComments, FaTasks, FaTags } from "react-icons/fa";
 import { useChat } from "../context/ChatContext";
 
 export default function Sidebar() {
@@ -18,6 +18,7 @@ export default function Sidebar() {
         { id: "marketing", name: "Pemasaran", icon: <FaBullhorn />, to: "/marketing" },
         { id: "feedback", name: "Kepuasan Tamu", icon: <FaSmile />, to: "/feedback" },
         { id: "tasks", name: "Tugas Staf", icon: <FaTasks />, to: "/tasks" },
+        { id: "services", name: "Layanan", icon: <FaTags />, to: "/services" },
         { id: "settings", name: "Pengaturan", icon: <FaCog />, to: "/details" },
     ];
 
