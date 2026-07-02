@@ -11,6 +11,8 @@ create table services (
   updated_at timestamptz not null default now()
 );
 
+
+
 create index idx_services_is_active on services(is_active);
 
 -- 2. Create reservation_services table
