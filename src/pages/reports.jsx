@@ -148,7 +148,7 @@ export default function Reports() {
       }
     });
 
-    const totalRoomCapacity = totalRooms * totalDaysInRange;
+    const totalRoomCapacity = totalRoomsCount * totalDaysInRange;
     const occupancyRate = totalRoomCapacity > 0 
       ? Math.min(100, Math.round((occupiedNights / totalRoomCapacity) * 100)) 
       : 0;
