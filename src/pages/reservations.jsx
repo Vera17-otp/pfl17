@@ -1,6 +1,5 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import React, { useState, useMemo, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { 
   FaCalendarAlt, 
   FaUser, 
@@ -26,8 +25,7 @@ import {
   FaCoffee,
   FaDownload,
   FaPrint,
-  FaBroom,
-  FaSignOutAlt
+  FaBroom
 } from "react-icons/fa";
 
 
@@ -36,7 +34,6 @@ import {
 import { reservations } from "../data/reservations";
 import { rooms } from "../data/rooms";
 import { useTask } from "../context/TaskContext";
-import { useAuth } from "../hooks/useAuth";
 
 // Helper rupiah formatter
 const formatRupiah = (val) => {
@@ -74,20 +71,6 @@ const updateRoomStatusInDB = async (roomNumber, nextStatus) => {
 
 export default function Reservations() {
   const { createCheckoutTask } = useTask();
-  const { signOut } = useAuth();
-  const navigate = useNavigate();
-
-  // Handler untuk logout
-  const handleLogout = async () => {
-    try {
-      await signOut();
-      navigate("/login");
-    } catch (error) {
-      console.error("Logout error:", error);
-      alert("Gagal logout: " + error.message);
-    }
-  };
-
   // 1. STATE UTAMA & NAVIGASI TAB
   const [activeTab, setActiveTab] = useState("reservation"); // "reservation" | "checkin" | "checkout"
   const [viewMode, setViewMode] = useState("list"); // "list" | "create" | "detail"
@@ -104,10 +87,101 @@ export default function Reservations() {
   const todayStr = "2026-06-14";
 
   // 1. STATE UTAMA (Supabase Integration)
-  const [resList, setResList] = useState([]);
+  const [resList, setResList] = useState([
+    {
+      bookingId: "BOK-5000",
+      guestId: "guest-001",
+      guestName: "Vera Zakia",
+      phone: "08128765432",
+      email: "vera.zakia@hotel.com",
+      roomNumber: "100",
+      roomType: "Deluxe",
+      checkIn: "2026-06-14",
+      checkOut: "2026-06-16",
+      status: "Check-in",
+      totalPayment: 2500000,
+      pointsEarned: 250,
+      additionalServiceFee: 145000
+    },
+    {
+      bookingId: "BOK-5001",
+      guestId: "guest-002",
+      guestName: "John Doe",
+      phone: "08198765432",
+      email: "john.doe@example.com",
+      roomNumber: "101",
+      roomType: "Suite",
+      checkIn: "2026-06-15",
+      checkOut: "2026-06-18",
+      status: "Menunggu Konfirmasi",
+      totalPayment: 4500000,
+      pointsEarned: 450,
+      additionalServiceFee: 200000
+    },
+    {
+      bookingId: "BOK-5002",
+      guestId: "guest-003",
+      guestName: "Siti Aminah",
+      phone: "08156789123",
+      email: "siti.aminah@example.com",
+      roomNumber: "102",
+      roomType: "Double",
+      checkIn: "2026-06-12",
+      checkOut: "2026-06-14",
+      status: "Check-out",
+      totalPayment: 1800000,
+      pointsEarned: 180,
+      additionalServiceFee: 100000
+    },
+    {
+      bookingId: "BOK-5003",
+      guestId: "guest-004",
+      guestName: "Michael Chen",
+      phone: "08167890123",
+      email: "michael.chen@example.com",
+      roomNumber: "103",
+      roomType: "Single",
+      checkIn: "2026-06-10",
+      checkOut: "2026-06-12",
+      status: "Dibatalkan",
+      totalPayment: 900000,
+      pointsEarned: 0,
+      additionalServiceFee: 50000
+    },
+    {
+      bookingId: "BOK-5004",
+      guestId: "guest-005",
+      guestName: "Budi Santoso",
+      phone: "08178901234",
+      email: "budi.santoso@example.com",
+      roomNumber: "104",
+      roomType: "Deluxe",
+      checkIn: "2026-06-14",
+      checkOut: "2026-06-15",
+      status: "Check-in",
+      totalPayment: 2200000,
+      pointsEarned: 220,
+      additionalServiceFee: 120000
+    },
+    {
+      bookingId: "BOK-5005",
+      guestId: "guest-006",
+      guestName: "Rina Kusuma",
+      phone: "08189012345",
+      email: "rina.kusuma@example.com",
+      roomNumber: "105",
+      roomType: "Double",
+      checkIn: "2026-06-16",
+      checkOut: "2026-06-18",
+      status: "Dikonfirmasi",
+      totalPayment: 1600000,
+      pointsEarned: 160,
+      additionalServiceFee: 80000
+    }
+  ]);
   const [roomsList, setRoomsList] = useState([]);
   const [servicesList, setServicesList] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   // State Riwayat Status (Lini Masa Audit Trail) - local storage fallback
   const [statusHistory, setStatusHistory] = useState(() => {
@@ -137,76 +211,55 @@ export default function Reservations() {
 
   const fetchData = async () => {
     try {
-      // 1. Fetch Rooms
-      const { data: dbRooms, error: roomsError } = await supabase
-        .from("rooms")
-        .select("*");
-      if (roomsError) throw roomsError;
+      // Menggunakan data dummy karena Supabase tidak terhubung
+      // Data sudah diinisialisasi di state resList
       
-      const formattedRooms = dbRooms.map(rm => ({
-        roomId: rm.id,
-        roomNumber: rm.room_number,
-        type: rm.room_type,
-        price: Number(rm.price_per_night),
-        capacity: rm.capacity,
-        status: rm.status.charAt(0).toUpperCase() + rm.status.slice(1),
-        description: rm.description,
-        floor: rm.floor,
-        facilities: rm.facilities || [],
-        image: rm.image
-      }));
-      setRoomsList(formattedRooms);
+      // Mock data untuk rooms
+      const mockRooms = [
+        { roomId: '1', roomNumber: '100', type: 'Deluxe', price: 1250000, capacity: 2, status: 'Tersedia', description: 'Kamar Deluxe nyaman dengan pemandangan kota', floor: 1, facilities: ['AC', 'WiFi', 'TV'], image: '' },
+        { roomId: '2', roomNumber: '101', type: 'Suite', price: 2250000, capacity: 3, status: 'Terboking', description: 'Suite mewah dengan ruang tamu', floor: 1, facilities: ['AC', 'WiFi', 'TV', 'Bathtub'], image: '' },
+        { roomId: '3', roomNumber: '102', type: 'Double', price: 900000, capacity: 2, status: 'Tersedia', description: 'Kamar Double standar dengan fasilitas lengkap', floor: 2, facilities: ['AC', 'WiFi', 'TV'], image: '' },
+        { roomId: '4', roomNumber: '103', type: 'Single', price: 600000, capacity: 1, status: 'Tersedia', description: 'Kamar Single untuk traveler solo', floor: 2, facilities: ['AC', 'WiFi'], image: '' },
+        { roomId: '5', roomNumber: '104', type: 'Deluxe', price: 1250000, capacity: 2, status: 'Terbooki', description: 'Kamar Deluxe nyaman', floor: 3, facilities: ['AC', 'WiFi', 'TV'], image: '' },
+        { roomId: '6', roomNumber: '105', type: 'Double', price: 900000, capacity: 2, status: 'Tersedia', description: 'Kamar Double nyaman', floor: 3, facilities: ['AC', 'WiFi', 'TV'], image: '' }
+      ];
+      setRoomsList(mockRooms);
 
-      // 1b. Fetch Services
-      const { data: dbServices, error: servicesError } = await supabase
-        .from("services")
-        .select("*")
-        .eq("is_active", true)
-        .order("name");
-      if (!servicesError && dbServices) {
-        setServicesList(dbServices);
-      }
-
-      // 2. Fetch Reservations
-      const { data: dbRes, error: resError } = await supabase
-        .from("reservations")
-        .select("*, profiles(*), rooms(*)");
-      if (resError) throw resError;
-
-      const formattedRes = dbRes.map(res => {
-        let statusLabel = "Menunggu Konfirmasi";
-        if (res.status === "confirmed") statusLabel = "Dikonfirmasi";
-        else if (res.status === "checked_in") statusLabel = "Check-in";
-        else if (res.status === "checked_out") statusLabel = "Check-out";
-        else if (res.status === "cancelled") statusLabel = "Dibatalkan";
-
-        return {
-          bookingId: res.id,
-          guestId: res.guest_id,
-          guestName: res.profiles?.full_name || "Tamu",
-          phone: res.profiles?.phone || "",
-          email: res.profiles?.email || "",
-          roomNumber: res.rooms?.room_number || "",
-          roomType: res.rooms?.room_type || "",
-          checkIn: res.check_in,
-          checkOut: res.check_out,
-          status: statusLabel,
-          totalPayment: Number(res.total_price),
-          pointsEarned: res.points_earned,
-          additionalServiceFee: 0 // Ideally this should be fetched from reservation_services sum
-        };
-      });
-
-      setResList(formattedRes);
+      // Mock data untuk services
+      const mockServices = [
+        { id: 'svc-1', name: 'Room Service', price: 150000, description: 'Layanan makanan ke kamar' },
+        { id: 'svc-2', name: 'Airport Transfer', price: 250000, description: 'Layanan antar jemput bandara' },
+        { id: 'svc-3', name: 'Spa Treatment', price: 400000, description: 'Perawatan spa profesional' },
+        { id: 'svc-4', name: 'Laundry Service', price: 50000, description: 'Layanan cuci pakaian' }
+      ];
+      setServicesList(mockServices);
+      
+      // setLoading sudah diset ke false di inisialisasi state
     } catch (err) {
-      console.error("Error fetching reservation data:", err);
-    } finally {
-      setLoading(false);
+      console.error("Error dengan data:", err);
     }
   };
 
   useEffect(() => {
-    fetchData();
+    // Inisialisasi mock data rooms dan services
+    const mockRooms = [
+      { roomId: '1', roomNumber: '100', type: 'Deluxe', price: 1250000, capacity: 2, status: 'Tersedia', description: 'Kamar Deluxe nyaman dengan pemandangan kota', floor: 1, facilities: ['AC', 'WiFi', 'TV'], image: '' },
+      { roomId: '2', roomNumber: '101', type: 'Suite', price: 2250000, capacity: 3, status: 'Terbooki', description: 'Suite mewah dengan ruang tamu', floor: 1, facilities: ['AC', 'WiFi', 'TV', 'Bathtub'], image: '' },
+      { roomId: '3', roomNumber: '102', type: 'Double', price: 900000, capacity: 2, status: 'Tersedia', description: 'Kamar Double standar dengan fasilitas lengkap', floor: 2, facilities: ['AC', 'WiFi', 'TV'], image: '' },
+      { roomId: '4', roomNumber: '103', type: 'Single', price: 600000, capacity: 1, status: 'Tersedia', description: 'Kamar Single untuk traveler solo', floor: 2, facilities: ['AC', 'WiFi'], image: '' },
+      { roomId: '5', roomNumber: '104', type: 'Deluxe', price: 1250000, capacity: 2, status: 'Terbooki', description: 'Kamar Deluxe nyaman', floor: 3, facilities: ['AC', 'WiFi', 'TV'], image: '' },
+      { roomId: '6', roomNumber: '105', type: 'Double', price: 900000, capacity: 2, status: 'Tersedia', description: 'Kamar Double nyaman', floor: 3, facilities: ['AC', 'WiFi', 'TV'], image: '' }
+    ];
+    
+    const mockServices = [
+      { id: 'svc-1', name: 'Room Service', price: 150000, description: 'Layanan makanan ke kamar' },
+      { id: 'svc-2', name: 'Airport Transfer', price: 250000, description: 'Layanan antar jemput bandara' },
+      { id: 'svc-3', name: 'Spa Treatment', price: 400000, description: 'Perawatan spa profesional' },
+      { id: 'svc-4', name: 'Laundry Service', price: 50000, description: 'Layanan cuci pakaian' }
+    ];
+    
+    setRoomsList(mockRooms);
+    setServicesList(mockServices);
   }, []);
 
   useEffect(() => {
@@ -691,29 +744,25 @@ export default function Reservations() {
           backgroundColor: 'var(--surface-color)',
           borderRadius: '12px 12px 0 0',
           padding: '12px 16px 0 16px',
-          boxShadow: 'var(--shadow-sm)',
-          justifyContent: 'space-between',
-          alignItems: 'center'
+          boxShadow: 'var(--shadow-sm)'
         }}
       >
-        {/* Tab buttons container */}
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button 
-            onClick={() => { setActiveTab("reservation"); setViewMode("list"); }}
-            style={{
-              padding: '12px 20px',
-              fontSize: '0.9rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              border: 'none',
-              background: 'none',
-              borderBottom: activeTab === 'reservation' ? '3px solid var(--primary-color)' : '3px solid transparent',
-              color: activeTab === 'reservation' ? 'var(--primary-color)' : 'var(--text-muted)',
-              transition: 'all 0.2s'
-            }}
-          >
-            Meja Reservasi
-          </button>
+        <button 
+          onClick={() => { setActiveTab("reservation"); setViewMode("list"); }}
+          style={{
+            padding: '12px 20px',
+            fontSize: '0.9rem',
+            fontWeight: 700,
+            cursor: 'pointer',
+            border: 'none',
+            background: 'none',
+            borderBottom: activeTab === 'reservation' ? '3px solid var(--primary-color)' : '3px solid transparent',
+            color: activeTab === 'reservation' ? 'var(--primary-color)' : 'var(--text-muted)',
+            transition: 'all 0.2s'
+          }}
+        >
+          Meja Reservasi
+        </button>
           <button 
             onClick={() => setActiveTab("checkin")}
             style={{
@@ -762,37 +811,6 @@ export default function Reservations() {
               </span>
             )}
           </button>
-        </div>
-
-        {/* Logout Button */}
-        <button 
-          onClick={handleLogout}
-          style={{
-            padding: '8px 16px',
-            fontSize: '0.85rem',
-            fontWeight: 600,
-            cursor: 'pointer',
-            border: '1px solid #EF4444',
-            background: 'transparent',
-            borderRadius: '6px',
-            color: '#EF4444',
-            transition: 'all 0.2s',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            marginBottom: '8px'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
-            e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(239, 68, 68, 0.1)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'transparent';
-            e.currentTarget.style.boxShadow = 'none';
-          }}
-        >
-          <FaSignOutAlt /> Logout
-        </button>
       </div>
 
       {/* ==================== TAB 1: MEJA RESERVASI ==================== */}
