@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { FaBell, FaSearch, FaComments, FaTimes, FaCalendarAlt, FaBed, FaCoins, FaCheck } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
+import { FaBell, FaSearch, FaComments, FaTimes, FaCalendarAlt, FaBed, FaCoins, FaCheck, FaSignOutAlt } from "react-icons/fa";
 import { useChat } from "../context/ChatContext";
+import { useAuth } from "../hooks/useAuth";
 import Input from "./ui/form/Input";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
@@ -29,10 +31,27 @@ const getStayNights = (inStr, outStr) => {
 export default function Header({ searchTerm, setSearchTerm }) {
   // Chat panel context
   const { totalUnread, setPanelOpen, panelOpen } = useChat();
+  
+  // Auth hooks
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
 
-  // 1. STATE NOTIFIKASI
+  // 1. STATE NOTIFIKASI & PROFILE DROPDOWN
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [selectedRes, setSelectedRes] = useState(null); // Menyimpan data reservasi aktif untuk modal
+  
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      setShowProfileMenu(false);
+      await signOut();
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+      alert("Gagal logout: " + error.message);
+    }
+  };
   
   const [notifications, setNotifications] = useState([
     {
@@ -265,14 +284,74 @@ export default function Header({ searchTerm, setSearchTerm }) {
         </div>
 
         {/* Profil User */}
-        <div className="user-profile">
-          <div className="user-info" style={{ textAlign: 'right' }}>
-            <span className="user-name" style={{ color: 'var(--text-main)' }}>Vera Zakia</span>
-            <span className="user-role">General Manager</span>
-          </div>
-          <Avatar>
-            <AvatarFallback>VZ</AvatarFallback>
-          </Avatar>
+        <div className="user-profile" style={{ position: 'relative' }}>
+          <button
+            onClick={() => setShowProfileMenu(!showProfileMenu)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '8px 12px',
+              borderRadius: '8px',
+              transition: 'all 0.2s',
+              marginRight: '-12px'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.05)' }
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+          >
+            <div className="user-info" style={{ textAlign: 'right' }}>
+              <span className="user-name" style={{ color: 'var(--text-main)' }}>Vera Zakia</span>
+              <span className="user-role">General Manager</span>
+            </div>
+            <Avatar>
+              <AvatarFallback>VZ</AvatarFallback>
+            </Avatar>
+          </button>
+
+          {/* Profile Dropdown Menu */}
+          {showProfileMenu && (
+            <div
+              style={{
+                position: 'absolute',
+                top: '50px',
+                right: '0',
+                backgroundColor: 'var(--surface-color)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '8px',
+                width: '200px',
+                boxShadow: 'var(--shadow-lg)',
+                zIndex: 999,
+                overflow: 'hidden'
+              }}
+            >
+              <button
+                onClick={handleLogout}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: 'none',
+                  background: 'none',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  color: '#EF4444',
+                  fontWeight: 600,
+                  fontSize: '0.9rem',
+                  transition: 'all 0.2s',
+                  borderBottom: '1px solid var(--border-color)'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                <FaSignOutAlt /> Logout
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

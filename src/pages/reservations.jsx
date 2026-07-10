@@ -1,5 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import React, { useState, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { 
   FaCalendarAlt, 
   FaUser, 
@@ -25,15 +26,17 @@ import {
   FaCoffee,
   FaDownload,
   FaPrint,
-  FaBroom
+  FaBroom,
+  FaSignOutAlt
 } from "react-icons/fa";
 
-import { supabase } from "../lib/supabase";
+
 
 // Import data asli
 import { reservations } from "../data/reservations";
 import { rooms } from "../data/rooms";
 import { useTask } from "../context/TaskContext";
+import { useAuth } from "../hooks/useAuth";
 
 // Helper rupiah formatter
 const formatRupiah = (val) => {
@@ -71,6 +74,20 @@ const updateRoomStatusInDB = async (roomNumber, nextStatus) => {
 
 export default function Reservations() {
   const { createCheckoutTask } = useTask();
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+
+  // Handler untuk logout
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+      alert("Gagal logout: " + error.message);
+    }
+  };
+
   // 1. STATE UTAMA & NAVIGASI TAB
   const [activeTab, setActiveTab] = useState("reservation"); // "reservation" | "checkin" | "checkout"
   const [viewMode, setViewMode] = useState("list"); // "list" | "create" | "detail"
@@ -674,72 +691,107 @@ export default function Reservations() {
           backgroundColor: 'var(--surface-color)',
           borderRadius: '12px 12px 0 0',
           padding: '12px 16px 0 16px',
-          boxShadow: 'var(--shadow-sm)'
+          boxShadow: 'var(--shadow-sm)',
+          justifyContent: 'space-between',
+          alignItems: 'center'
         }}
       >
+        {/* Tab buttons container */}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button 
+            onClick={() => { setActiveTab("reservation"); setViewMode("list"); }}
+            style={{
+              padding: '12px 20px',
+              fontSize: '0.9rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              border: 'none',
+              background: 'none',
+              borderBottom: activeTab === 'reservation' ? '3px solid var(--primary-color)' : '3px solid transparent',
+              color: activeTab === 'reservation' ? 'var(--primary-color)' : 'var(--text-muted)',
+              transition: 'all 0.2s'
+            }}
+          >
+            Meja Reservasi
+          </button>
+          <button 
+            onClick={() => setActiveTab("checkin")}
+            style={{
+              padding: '12px 20px',
+              fontSize: '0.9rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              border: 'none',
+              background: 'none',
+              borderBottom: activeTab === 'checkin' ? '3px solid #10B981' : '3px solid transparent',
+              color: activeTab === 'checkin' ? '#10B981' : 'var(--text-muted)',
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <FaDoorOpen /> Check-in Hari Ini
+            {checkInTodayList.length > 0 && (
+              <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '10px', backgroundColor: '#E6F7ED', color: '#10B981', fontWeight: 800 }}>
+                {checkInTodayList.length}
+              </span>
+            )}
+          </button>
+          <button 
+            onClick={() => setActiveTab("checkout")}
+            style={{
+              padding: '12px 20px',
+              fontSize: '0.9rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              border: 'none',
+              background: 'none',
+              borderBottom: activeTab === 'checkout' ? '3px solid #64748B' : '3px solid transparent',
+              color: activeTab === 'checkout' ? '#64748B' : 'var(--text-muted)',
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <FaBroom /> Check-out Hari Ini
+            {checkOutTodayList.length > 0 && (
+              <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '10px', backgroundColor: '#F1F5F9', color: '#64748B', fontWeight: 800 }}>
+                {checkOutTodayList.length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Logout Button */}
         <button 
-          onClick={() => { setActiveTab("reservation"); setViewMode("list"); }}
+          onClick={handleLogout}
           style={{
-            padding: '12px 20px',
-            fontSize: '0.9rem',
-            fontWeight: 700,
+            padding: '8px 16px',
+            fontSize: '0.85rem',
+            fontWeight: 600,
             cursor: 'pointer',
-            border: 'none',
-            background: 'none',
-            borderBottom: activeTab === 'reservation' ? '3px solid var(--primary-color)' : '3px solid transparent',
-            color: activeTab === 'reservation' ? 'var(--primary-color)' : 'var(--text-muted)',
-            transition: 'all 0.2s'
-          }}
-        >
-          Meja Reservasi
-        </button>
-        <button 
-          onClick={() => setActiveTab("checkin")}
-          style={{
-            padding: '12px 20px',
-            fontSize: '0.9rem',
-            fontWeight: 700,
-            cursor: 'pointer',
-            border: 'none',
-            background: 'none',
-            borderBottom: activeTab === 'checkin' ? '3px solid #10B981' : '3px solid transparent',
-            color: activeTab === 'checkin' ? '#10B981' : 'var(--text-muted)',
+            border: '1px solid #EF4444',
+            background: 'transparent',
+            borderRadius: '6px',
+            color: '#EF4444',
             transition: 'all 0.2s',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px'
+            gap: '8px',
+            marginBottom: '8px'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+            e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(239, 68, 68, 0.1)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+            e.currentTarget.style.boxShadow = 'none';
           }}
         >
-          <FaDoorOpen /> Check-in Hari Ini
-          {checkInTodayList.length > 0 && (
-            <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '10px', backgroundColor: '#E6F7ED', color: '#10B981', fontWeight: 800 }}>
-              {checkInTodayList.length}
-            </span>
-          )}
-        </button>
-        <button 
-          onClick={() => setActiveTab("checkout")}
-          style={{
-            padding: '12px 20px',
-            fontSize: '0.9rem',
-            fontWeight: 700,
-            cursor: 'pointer',
-            border: 'none',
-            background: 'none',
-            borderBottom: activeTab === 'checkout' ? '3px solid #64748B' : '3px solid transparent',
-            color: activeTab === 'checkout' ? '#64748B' : 'var(--text-muted)',
-            transition: 'all 0.2s',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}
-        >
-          <FaBroom /> Check-out Hari Ini
-          {checkOutTodayList.length > 0 && (
-            <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '10px', backgroundColor: '#F1F5F9', color: '#64748B', fontWeight: 800 }}>
-              {checkOutTodayList.length}
-            </span>
-          )}
+          <FaSignOutAlt /> Logout
         </button>
       </div>
 
